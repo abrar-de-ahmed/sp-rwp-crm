@@ -103,6 +103,7 @@ export default function CRMLayout({
   userId,
 }: CRMLayoutProps) {
   const [activePage, setActivePage] = useState<PageId>('dashboard');
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Check if tour should be shown — read from localStorage without setState in effect
   const tourCompleted = useSyncExternalStore(
@@ -129,9 +130,18 @@ export default function CRMLayout({
   useEffect(() => {
     injectSidebarTargetIds();
 
-    // Re-inject periodically because the sidebar sheet opens/closes
-    const interval = setInterval(injectSidebarTargetIds, 500);
-    return () => clearInterval(interval);
+    // Use MutationObserver to re-inject when sidebar DOM changes (e.g., sheet opens/closes)
+    const observer = new MutationObserver(() => {
+      injectSidebarTargetIds();
+    });
+    const desktopSidebar = document.querySelector('aside');
+    if (desktopSidebar) {
+      observer.observe(desktopSidebar, { childList: true, subtree: true });
+    }
+    // Also observe the document body for mobile sidebar sheet
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => observer.disconnect();
   }, []);
 
   const currentPageTitle = pageTitles[activePage] ?? 'Dashboard';
@@ -150,6 +160,8 @@ export default function CRMLayout({
       return (
         <LeadsPage
           user={{ id: userId, name: userName, email: userEmail, role: userRole }}
+          initialLeadId={selectedLeadId ?? undefined}
+          onLeadOpened={() => setSelectedLeadId(null)}
         />
       );
     }
@@ -157,7 +169,7 @@ export default function CRMLayout({
       return (
         <PipelinePage
           user={{ id: userId, name: userName, email: userEmail, role: userRole }}
-          onNavigateToLead={(leadId) => setActivePage('leads')}
+          onNavigateToLead={(leadId) => { setSelectedLeadId(leadId); setActivePage('leads'); }}
         />
       );
     }
@@ -165,7 +177,7 @@ export default function CRMLayout({
       return (
         <FollowUpsPage
           user={{ id: userId, name: userName, email: userEmail, role: userRole }}
-          onNavigateToLead={(leadId) => setActivePage('leads')}
+          onNavigateToLead={(leadId) => { setSelectedLeadId(leadId); setActivePage('leads'); }}
         />
       );
     }
@@ -187,7 +199,7 @@ export default function CRMLayout({
       return (
         <CallHistoryPage
           user={{ id: userId, name: userName, email: userEmail, role: userRole }}
-          onNavigateToLead={(leadId) => setActivePage('leads')}
+          onNavigateToLead={(leadId) => { setSelectedLeadId(leadId); setActivePage('leads'); }}
         />
       );
     }
@@ -306,10 +318,13 @@ export default function CRMLayout({
           userId={userId}
           onMenuToggle={() => setSidebarOpen(true)}
           onNavigate={(page, leadId) => {
-            setActivePage(page);
+            setSelectedLeadId(null);
             if (leadId) {
               // Navigate to leads page if a leadId is provided
+              setSelectedLeadId(leadId);
               setActivePage('leads');
+            } else {
+              setActivePage(page);
             }
           }}
         />

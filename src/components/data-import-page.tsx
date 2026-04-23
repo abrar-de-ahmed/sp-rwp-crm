@@ -71,7 +71,6 @@ function ImportContent() {
 
   // Handle file selection
   const handleFile = useCallback((selectedFile: File) => {
-    const validTypes = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
     const validExtensions = ['.csv', '.xlsx', '.xls'];
     const ext = '.' + selectedFile.name.split('.').pop()?.toLowerCase();
 
@@ -79,6 +78,15 @@ function ImportContent() {
       toast({
         title: 'Invalid File',
         description: 'Please upload a CSV or XLSX file.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (selectedFile.size > 10 * 1024 * 1024) {
+      toast({
+        title: 'File Too Large',
+        description: 'Maximum file size is 10 MB.',
         variant: 'destructive',
       });
       return;

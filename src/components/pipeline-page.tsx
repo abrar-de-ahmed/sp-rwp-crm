@@ -9,7 +9,7 @@ import {
   Inbox,
   Loader2,
 } from 'lucide-react';
-import { DndContext, DragOverlay, closestCorners, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, DragOverlay, closestCorners, PointerSensor, useSensor, useSensors, useDroppable } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
@@ -240,12 +240,14 @@ function PipelineColumn({
 }) {
   const config = COLUMN_CONFIG[status] ?? COLUMN_CONFIG.NEW;
   const isLost = status === 'LOST';
+  const { setNodeRef, isOver } = useDroppable({ id: status });
 
   return (
     <div
-      className={`flex-shrink-0 w-[260px] md:w-[270px] flex flex-col rounded-xl ${
+      ref={setNodeRef}
+      className={`flex-shrink-0 w-[260px] md:w-[270px] flex flex-col rounded-xl transition-colors ${
         isLost ? 'bg-muted/80 border border-border/40' : 'bg-muted/40'
-      }`}
+      } ${isOver ? 'ring-2 ring-emerald-400 ring-offset-2' : ''}`}
     >
       {/* Column Header */}
       <div

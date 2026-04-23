@@ -54,7 +54,7 @@ export default function Header({
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-white border-b border-border/60 backdrop-blur-sm">
+    <header className="sticky top-0 z-30 bg-background border-b border-border/60 backdrop-blur-sm">
       <div className="flex items-center justify-between h-16 px-4 lg:px-6">
         {/* Left: Menu toggle + Page title */}
         <div className="flex items-center gap-3">

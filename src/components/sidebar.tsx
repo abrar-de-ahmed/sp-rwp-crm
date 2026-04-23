@@ -84,9 +84,11 @@ const superAdminItems: NavItem[] = [
 function getMenuItems(role: string): NavItem[] {
   const items = [...salesRepItems];
   if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
-    // Change the leads label to 'All Leads' for admins
-    const leadsItem = items.find((i) => i.id === 'leads');
-    if (leadsItem) leadsItem.label = 'All Leads';
+    // Change the leads label to 'All Leads' for admins — create new object to avoid mutation
+    const leadsIdx = items.findIndex((i) => i.id === 'leads');
+    if (leadsIdx !== -1) {
+      items[leadsIdx] = { ...items[leadsIdx], label: 'All Leads' };
+    }
     items.splice(2, 0, ...adminItems);
   }
   if (role === 'SUPER_ADMIN') {

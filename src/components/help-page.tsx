@@ -5,7 +5,7 @@ import {
   HelpCircle,
   RefreshCw,
   Mail,
-  MessageSquareQuestion,
+  MessageSquareQuote,
   BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -46,7 +46,7 @@ const faqItems = [
     id: 'faq-2',
     question: 'How do I change a lead\'s status?',
     answer:
-      "Open the lead detail page and click the status buttons to change between New, Contacted, Qualified, Converted, and Lost. Each status change is logged in the audit trail.",
+      "Open the lead detail page and click the status buttons to change between New, Contacted, Interested, Negotiation, Booked, and Lost. Each status change is logged in the audit trail.",
   },
   {
     id: 'faq-3',
@@ -108,7 +108,7 @@ export default function HelpPage({ user }: { user: HelpUser }) {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
-            <MessageSquareQuestion className="w-5 h-5 text-emerald-600" />
+            <MessageSquareQuote className="w-5 h-5 text-emerald-600" />
             Frequently Asked Questions
           </CardTitle>
         </CardHeader>

@@ -54,6 +54,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Pre-fetch existing phone numbers for dedup and active reps with lead counts
+    const existingPhones = new Set(
+      (await db.lead.findMany({ select: { phone: true } })).map((l) => l.phone),
+    );
+
+    const activeReps = await db.user.findMany({
+      where: { role: 'SALES_REP', isActive: true },
+      select: { id: true },
+      orderBy: { id: 'asc' },
+    });
+
+    // Fetch lead counts for all active reps in one batch
+    const repCountsArr = await Promise.all(
+      activeReps.map(async (rep) => {
+        const count = await db.lead.count({
+          where: { assignedRepId: rep.id, status: { not: 'LOST' } },
+        });
+        return { id: rep.id, count };
+      }),
+    );
+    repCountsArr.sort((a, b) => a.count - b.count);
+
     // Import rows
     let imported = 0;
     let duplicates = 0;
@@ -80,36 +102,19 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // Check for duplicate by phone
-        if (cleanPhone) {
-          const existing = await db.lead.findUnique({
-            where: { phone: cleanPhone },
-          });
-          if (existing) {
-            duplicates++;
-            continue;
-          }
+        // Check for duplicate by phone (using pre-fetched set)
+        if (cleanPhone && existingPhones.has(cleanPhone)) {
+          duplicates++;
+          continue;
         }
 
-        // Find an active sales rep for assignment (round-robin by least leads)
-        const activeReps = await db.user.findMany({
-          where: { role: 'SALES_REP', isActive: true },
-          select: { id: true },
-          orderBy: { id: 'asc' },
-        });
-
+        // Assign rep using pre-fetched data
         let assignedRepId: string | null = null;
-        if (activeReps.length > 0) {
-          const repCounts = await Promise.all(
-            activeReps.map(async (rep) => {
-              const count = await db.lead.count({
-                where: { assignedRepId: rep.id, status: { not: 'LOST' } },
-              });
-              return { id: rep.id, count };
-            }),
-          );
-          repCounts.sort((a, b) => a.count - b.count);
-          assignedRepId = repCounts[0].id;
+        if (repCountsArr.length > 0) {
+          assignedRepId = repCountsArr[0].id;
+          // Increment count for round-robin effect
+          repCountsArr[0].count++;
+          repCountsArr.sort((a, b) => a.count - b.count);
         }
 
         // Create the lead

@@ -39,7 +39,10 @@ export async function GET(request: NextRequest) {
 
     if (source) where.source = source;
     if (temperature) where.temperature = temperature;
-    if (status) where.status = status;
+    if (status) {
+      const statuses = status.split(',').map((s) => s.trim()).filter(Boolean);
+      where.status = statuses.length > 1 ? { in: statuses } : statuses[0];
+    }
     if (leadType) where.leadType = leadType;
 
     // Fetch leads with pagination
@@ -103,6 +106,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'First name, last name, and phone are required' },
         { status: 400 },
+      );
+    }
+
+    // Check for existing phone number to prevent duplicates
+    const existing = await db.lead.findUnique({
+      where: { phone: phone.trim() },
+    });
+    if (existing) {
+      return NextResponse.json(
+        { error: 'A lead with this phone number already exists' },
+        { status: 409 },
       );
     }
 

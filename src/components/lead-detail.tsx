@@ -149,6 +149,12 @@ interface LeadDetailProps {
 // Badge Helpers
 // ──────────────────────────────────────
 
+function safeJsonParse(str: string | null | undefined, fallback: string[] = []): string[] {
+  if (!str) return fallback;
+  try { const parsed = JSON.parse(str); return Array.isArray(parsed) ? parsed : fallback; }
+  catch { return fallback; }
+}
+
 const temperatureBadgeColors: Record<string, string> = {
   HOT: 'bg-red-100 text-red-700 border-red-200',
   WARM: 'bg-amber-100 text-amber-700 border-amber-200',
@@ -404,8 +410,8 @@ export default function LeadDetail({ leadId, user, onBack, onLeadUpdated }: Lead
 
   if (!lead) return null;
 
-  const facilities: string[] = JSON.parse(lead.interestedFacilities || '[]');
-  const tags: string[] = JSON.parse(lead.tags || '[]');
+  const facilities: string[] = safeJsonParse(lead.interestedFacilities);
+  const tags: string[] = safeJsonParse(lead.tags);
 
   return (
     <div className="space-y-6">
@@ -1031,10 +1037,10 @@ export default function LeadDetail({ leadId, user, onBack, onLeadUpdated }: Lead
             whatsappNumber: lead.whatsappNumber ?? '',
             source: lead.source,
             leadType: lead.leadType,
-            interestedFacilities: JSON.parse(lead.interestedFacilities || '[]'),
+            interestedFacilities: safeJsonParse(lead.interestedFacilities),
             familySize: lead.familySize,
             budgetRange: lead.budgetRange ?? '',
-            tags: JSON.parse(lead.tags || '[]'),
+            tags: safeJsonParse(lead.tags),
             assignedRepId: lead.assignedRepId ?? '',
             metaAdCampaign: lead.metaAdCampaign ?? '',
             remarks: '',

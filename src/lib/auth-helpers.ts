@@ -90,9 +90,19 @@ export async function isSalesRep(): Promise<boolean> {
  *
  * Role hierarchy: SUPER_ADMIN > ADMIN > SALES_REP
  */
-export async function requireRole(minRole: UserRole): Promise<void> {
+export async function requireRole(minRole: UserRole): Promise<{
+  user: { id: string; name: string; email: string; role: string };
+}> {
   const session = await getSession();
   const role = session?.user?.role as UserRole | undefined;
+
+  // Unauthenticated users get 401, not 403
+  if (!session?.user) {
+    throw new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 
   const hierarchy: Record<UserRole, number> = {
     SALES_REP: 1,
@@ -106,4 +116,8 @@ export async function requireRole(minRole: UserRole): Promise<void> {
       headers: { "Content-Type": "application/json" },
     });
   }
+
+  return session as unknown as {
+    user: { id: string; name: string; email: string; role: string };
+  };
 }

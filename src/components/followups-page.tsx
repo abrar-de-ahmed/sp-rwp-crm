@@ -206,28 +206,21 @@ export default function FollowUpsPage({ user, onNavigateToLead }: FollowUpsPageP
   // Fetch team members for escalation dialog
   const fetchTeamMembers = useCallback(async () => {
     try {
-      const res = await fetch('/api/leads?limit=1');
-      // We need a team endpoint — just fetch all active users for now
-      // Use a simple approach: filter assigned reps from existing data
+      const res = await fetch('/api/users');
       if (res.ok) {
-        const users = new Map<string, string>();
-        followUps.forEach((fu) => {
-          if (fu.assignedTo && !users.has(fu.assignedTo.id)) {
-            users.set(fu.assignedTo.id, fu.assignedTo.name);
-          }
-        });
-        // Add current user if admin
-        if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
-          users.set(user.id, user.name);
+        const data = await res.json();
+        if (Array.isArray(data.users)) {
+          setTeamMembers(
+            data.users
+              .filter((u: { isActive: boolean }) => u.isActive)
+              .map((u: { id: string; name: string }) => ({ id: u.id, name: u })),
+          );
         }
-        setTeamMembers(
-          Array.from(users.entries()).map(([id, name]) => ({ id, name })),
-        );
       }
     } catch {
       // silent
     }
-  }, [followUps, user]);
+  }, []);
 
   // Reset page on filter change
   useEffect(() => {

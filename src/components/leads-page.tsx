@@ -86,6 +86,8 @@ interface LeadsResponse {
 
 interface LeadsPageProps {
   user: LeadUser;
+  initialLeadId?: string;
+  onLeadOpened?: () => void;
 }
 
 const SOURCES = [
@@ -214,7 +216,7 @@ function timeAgo(dateStr: string) {
 // Component
 // ──────────────────────────────────────
 
-export default function LeadsPage({ user }: LeadsPageProps) {
+export default function LeadsPage({ user, initialLeadId, onLeadOpened }: LeadsPageProps) {
   const { toast } = useToast();
 
   // State
@@ -232,6 +234,14 @@ export default function LeadsPage({ user }: LeadsPageProps) {
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+
+  // Auto-open lead detail if initialLeadId is provided
+  useEffect(() => {
+    if (initialLeadId) {
+      setSelectedLeadId(initialLeadId);
+      onLeadOpened?.();
+    }
+  }, [initialLeadId, onLeadOpened]);
 
   // Fetch leads
   const fetchLeads = useCallback(async () => {

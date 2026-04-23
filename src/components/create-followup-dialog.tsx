@@ -74,35 +74,15 @@ export default function CreateFollowupDialog({
     const fetchLeads = async () => {
       setLoadingLeads(true);
       try {
-        const params = new URLSearchParams({ limit: '200' });
-        // Filter to only active leads (not LOST)
-        params.set('status', 'NEW');
-        const res = await fetch(`/api/leads?${params}`);
+        const res = await fetch('/api/leads?limit=500&status=NEW,CONTACTED,INTERESTED,NEGOTIATION,BOOKED');
         if (res.ok) {
           const data = await res.json();
-          // Also fetch other statuses
-          const allStatuses = ['CONTACTED', 'INTERESTED', 'NEGOTIATION', 'BOOKED'];
-          const otherRes = await Promise.all(
-            allStatuses.map(async (s) => {
-              const r = await fetch(`/api/leads?limit=200&status=${s}`);
-              if (r.ok) return (await r.json()).leads;
-              return [];
-            }),
-          );
-          const allLeads = [
-            ...data.leads,
-            ...otherRes.flat(),
-          ];
-          // Deduplicate by id
-          const seen = new Set<string>();
-          const unique: LeadOption[] = [];
-          for (const l of allLeads) {
-            if (!seen.has(l.id)) {
-              seen.add(l.id);
-              unique.push({ id: l.id, firstName: l.firstName, lastName: l.lastName });
-            }
-          }
-          setLeads(unique);
+          const leadsList: LeadOption[] = (data.leads ?? []).map((l: { id: string; firstName: string; lastName: string }) => ({
+            id: l.id,
+            firstName: l.firstName,
+            lastName: l.lastName,
+          }));
+          setLeads(leadsList);
         }
       } catch {
         // silent

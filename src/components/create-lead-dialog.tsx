@@ -145,16 +145,19 @@ export default function CreateLeadDialog({
   // Fetch sales reps for admin/super admin
   useEffect(() => {
     if (!isRep) {
-      fetch('/api/dashboard/stats')
+      fetch('/api/users')
         .then((res) => res.json())
         .then((data) => {
-          if (data.repPerformance) {
-            setSalesReps(data.repPerformance.map((r: { id: string; name: string }) => ({ id: r.id, name: r.name })));
+          if (Array.isArray(data.users)) {
+            setSalesReps(
+              data.users
+                .filter((u: { role: string; isActive: boolean }) => u.role === 'SALES_REP' && u.isActive)
+                .map((u: { id: string; name: string }) => ({ id: u.id, name: u.name })),
+            );
           }
         })
         .catch(() => {
-          // Fallback: fetch users
-          // We'll just leave the dropdown empty if it fails
+          // Fallback: leave the dropdown empty
         });
     }
   }, [isRep, open]);

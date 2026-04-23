@@ -18,6 +18,7 @@ import {
   Activity,
   Target,
 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import {
   Card,
   CardContent,
@@ -169,6 +170,7 @@ const priorityBadge: Record<string, { class: string }> = {
 };
 
 export default function Dashboard({ userRole, userName, userId }: DashboardProps) {
+  const { toast } = useToast();
   const [data, setData] = useState<DashboardApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -181,7 +183,7 @@ export default function Dashboard({ userRole, userName, userId }: DashboardProps
         setData(json);
       }
     } catch {
-      // silently fail
+      toast({ title: 'Error', description: 'Failed to load dashboard data', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -239,32 +241,24 @@ export default function Dashboard({ userRole, userName, userId }: DashboardProps
           title={isAdmin ? 'Total Leads' : 'New Leads'}
           value={data?.stats.newLeads ?? 0}
           icon={<Users className="w-5 h-5 text-emerald-600" />}
-          trend="+12%"
-          trendUp={true}
           iconBg="bg-emerald-50"
         />
         <StatCard
           title="Calls Today"
           value={data?.stats.callsToday ?? 0}
           icon={<Phone className="w-5 h-5 text-blue-600" />}
-          trend="+8%"
-          trendUp={true}
           iconBg="bg-blue-50"
         />
         <StatCard
           title="Conversions"
           value={data?.stats.conversionsToday ?? 0}
           icon={<TrendingUp className="w-5 h-5 text-amber-600" />}
-          trend="+24%"
-          trendUp={true}
           iconBg="bg-amber-50"
         />
         <StatCard
           title="Pending Follow-Ups"
           value={data?.stats.pendingFollowUps ?? 0}
           icon={<Clock className="w-5 h-5 text-purple-600" />}
-          trend="-3%"
-          trendUp={false}
           iconBg="bg-purple-50"
         />
       </div>

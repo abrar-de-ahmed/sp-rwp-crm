@@ -57,6 +57,7 @@ export async function GET(request: NextRequest) {
         updatedAt: true,
       },
       orderBy: { updatedAt: 'desc' },
+      take: 200,
     });
 
     // Group by status
