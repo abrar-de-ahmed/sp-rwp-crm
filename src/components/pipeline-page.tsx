@@ -9,6 +9,24 @@ import {
   Inbox,
   Loader2,
 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { DndContext, DragOverlay, closestCorners, PointerSensor, useSensor, useSensors, useDroppable } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -68,6 +86,15 @@ const COLUMN_CONFIG: Record<string, { label: string; color: string; bgColor: str
   BOOKED: { label: 'Booked', color: 'text-green-700', bgColor: 'bg-green-50/30', headerBg: 'bg-green-50' },
   LOST: { label: 'Lost', color: 'text-red-700', bgColor: 'bg-red-50/30', headerBg: 'bg-red-50' },
 };
+
+const LOST_REASONS = [
+  { value: 'NOT_INTERESTED', label: 'Not Interested' },
+  { value: 'WRONG_NUMBER', label: 'Wrong Number' },
+  { value: 'UNREACHABLE', label: 'Unreachable' },
+  { value: 'WENT_COMPETITOR', label: 'Went to Competitor' },
+  { value: 'BUDGET', label: 'Budget Issues' },
+  { value: 'OTHER', label: 'Other' },
+];
 
 const sourceBadgeColors: Record<string, string> = {
   META_AD: 'bg-violet-100 text-violet-700 border-violet-200',
@@ -330,6 +357,10 @@ export default function PipelinePage({ user, onNavigateToLead }: PipelinePagePro
   const [myLeads, setMyLeads] = useState(false);
   const [activeCard, setActiveCard] = useState<PipelineLead | null>(null);
   const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
+  const [lostDialogOpen, setLostDialogOpen] = useState(false);
+  const [lostReason, setLostReason] = useState('');
+  const [pendingLostLeadId, setPendingLostLeadId] = useState<string | null>(null);
+  const [pendingLostLeadName, setPendingLostLeadName] = useState('');
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -408,11 +439,18 @@ export default function PipelinePage({ user, onNavigateToLead }: PipelinePagePro
 
       // Update status via API
       setStatusUpdating(leadId);
+      
+      // If dragging to LOST, show lost reason dialog
+      if (targetStatus === 'LOST') {
+        setPendingLostLeadId(leadId);
+        setPendingLostLeadName(`${lead.firstName} ${lead.lastName}`);
+        setLostReason('');
+        setLostDialogOpen(true);
+        return;
+      }
+
       try {
         const body: Record<string, string> = { status: targetStatus };
-        if (targetStatus === 'LOST') {
-          body.lostReason = 'OTHER';
-        }
 
         const res = await fetch(`/api/leads/${leadId}/status`, {
           method: 'PUT',
@@ -472,6 +510,39 @@ export default function PipelinePage({ user, onNavigateToLead }: PipelinePagePro
     },
     [onNavigateToLead],
   );
+
+  // Handle LOST confirmation from dialog
+  const handleLostConfirm = useCallback(async () => {
+    if (!pendingLostLeadId || !lostReason) {
+      toast({ title: 'Error', description: 'Please select a lost reason', variant: 'destructive' });
+      return;
+    }
+    try {
+      const res = await fetch(`/api/leads/${pendingLostLeadId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'LOST', lostReason }),
+      });
+      if (res.ok) {
+        toast({
+          title: 'Lead Moved to Lost',
+          description: `${pendingLostLeadName} marked as LOST`,
+        });
+        fetchPipeline();
+      } else {
+        const data = await res.json();
+        toast({ title: 'Error', description: data.error || 'Failed to move lead', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Error', description: 'Failed to move lead', variant: 'destructive' });
+    } finally {
+      setLostDialogOpen(false);
+      setPendingLostLeadId(null);
+      setPendingLostLeadName('');
+      setLostReason('');
+      setStatusUpdating(null);
+    }
+  }, [pendingLostLeadId, pendingLostLeadName, lostReason, fetchPipeline, toast]);
 
   const isAdmin = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
 
@@ -588,7 +659,7 @@ export default function PipelinePage({ user, onNavigateToLead }: PipelinePagePro
       )}
 
       {/* Status update overlay */}
-      {statusUpdating && (
+      {statusUpdating && !lostDialogOpen && (
         <div className="fixed inset-0 bg-black/5 flex items-center justify-center z-50 pointer-events-none">
           <div className="bg-background rounded-lg shadow-lg px-6 py-4 flex items-center gap-3 pointer-events-auto">
             <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
@@ -596,6 +667,43 @@ export default function PipelinePage({ user, onNavigateToLead }: PipelinePagePro
           </div>
         </div>
       )}
+
+      {/* Lost Reason Dialog */}
+      <AlertDialog open={lostDialogOpen} onOpenChange={(open) => { if (!open) { setLostDialogOpen(false); setStatusUpdating(null); }}}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark Lead as Lost</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to mark <strong>{pendingLostLeadName}</strong> as LOST. Please select a reason below.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3 py-2">
+            <Label className="text-sm font-medium">Lost Reason *</Label>
+            <Select value={lostReason} onValueChange={setLostReason}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a reason..." />
+              </SelectTrigger>
+              <SelectContent>
+                {LOST_REASONS.map((r) => (
+                  <SelectItem key={r.value} value={r.value}>
+                    {r.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setStatusUpdating(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLostConfirm}
+              disabled={!lostReason}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Confirm LOST
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

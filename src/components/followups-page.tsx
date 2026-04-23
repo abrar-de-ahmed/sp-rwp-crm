@@ -206,14 +206,12 @@ export default function FollowUpsPage({ user, onNavigateToLead }: FollowUpsPageP
   // Fetch team members for escalation dialog
   const fetchTeamMembers = useCallback(async () => {
     try {
-      const res = await fetch('/api/users');
+      const res = await fetch('/api/team-members');
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data.users)) {
+        if (Array.isArray(data.members)) {
           setTeamMembers(
-            data.users
-              .filter((u: { isActive: boolean }) => u.isActive)
-              .map((u: { id: string; name: string }) => ({ id: u.id, name: u })),
+            data.members.map((m: { id: string; name: string }) => ({ id: m.id, name: m.name })),
           );
         }
       }

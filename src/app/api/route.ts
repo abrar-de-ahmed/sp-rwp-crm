@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-helpers";
 
 export async function GET() {
-  return NextResponse.json({ message: "Hello, world!" });
+  try {
+    await requireAuth();
+    return NextResponse.json({ status: "ok", timestamp: new Date().toISOString() });
+  } catch (error) {
+    if (error instanceof Response) return error;
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 }

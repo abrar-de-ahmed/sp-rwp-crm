@@ -170,7 +170,7 @@ export async function GET() {
 
     // Super Admin: add system health data
     if (role === 'SUPER_ADMIN') {
-      // Channel statuses
+      // Channel statuses — always show all three channels from DB
       const channels = await db.channelConnection.findMany({
         select: { channel: true, status: true },
       });
@@ -181,19 +181,12 @@ export async function GET() {
         WHATSAPP: 'WhatsApp',
       };
 
-      response.channelStatuses = channels.map((ch) => ({
-        channel: channelNames[ch.channel] ?? ch.channel,
-        status: ch.status,
-      }));
+      const channelMap = new Map(channels.map((ch) => [ch.channel, ch.status]));
 
-      // If no channels exist, provide mock data
-      if (channels.length === 0) {
-        response.channelStatuses = [
-          { channel: 'Facebook', status: 'DISCONNECTED' },
-          { channel: 'Instagram', status: 'DISCONNECTED' },
-          { channel: 'WhatsApp', status: 'DISCONNECTED' },
-        ];
-      }
+      response.channelStatuses = ['FACEBOOK', 'INSTAGRAM', 'WHATSAPP'].map((ch) => ({
+        channel: channelNames[ch] ?? ch,
+        status: channelMap.get(ch) ?? 'DISCONNECTED',
+      }));
 
       // Lead source breakdown
       const leadSourceGroups = await db.lead.groupBy({
@@ -217,14 +210,24 @@ export async function GET() {
         count: g._count.id,
       }));
 
-      // AI Agent statuses (mock 5 agents since no AI_Agent model exists)
-      response.aiAgentStatuses = [
-        { id: 1, name: 'Lead Qualifier', status: 'ACTIVE' },
-        { id: 2, name: 'Follow-Up Scheduler', status: 'ACTIVE' },
-        { id: 3, name: 'Call Summarizer', status: 'ACTIVE' },
-        { id: 4, name: 'WhatsApp Responder', status: 'INACTIVE' },
-        { id: 5, name: 'Insight Analyzer', status: 'ACTIVE' },
-      ];
+      // AI Agent statuses — read from centralized definitions
+      try {
+        const { AI_AGENT_DEFINITIONS } = await import('@/lib/ai-agent');
+        response.aiAgentStatuses = AI_AGENT_DEFINITIONS.map((agent: { id: number; name: string; defaultEnabled: boolean }) => ({
+          id: agent.id,
+          name: agent.name,
+          status: agent.defaultEnabled ? 'ACTIVE' : 'INACTIVE',
+        }));
+      } catch {
+        // Fallback if ai-agent module not yet created
+        response.aiAgentStatuses = [
+          { id: 1, name: 'Lead Scoring Engine', status: 'ACTIVE' },
+          { id: 2, name: 'Customer Bot', status: 'ACTIVE' },
+          { id: 3, name: 'Call Monitor', status: 'ACTIVE' },
+          { id: 4, name: 'Follow-Up Agent', status: 'INACTIVE' },
+          { id: 5, name: 'Reporting Agent', status: 'ACTIVE' },
+        ];
+      }
 
       // Active memberships
       const activeMemberships = await db.membership.count({
