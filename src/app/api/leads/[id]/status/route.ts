@@ -131,7 +131,7 @@ export async function PUT(
           type: 'SYSTEM_ALERT',
           title: 'Lead Booked!',
           message: `${lead.firstName} ${lead.lastName} has been marked as BOOKED.`,
-          link: `/leads/${id}`,
+          link: `leads:${id}`,
           sentVia: 'IN_APP',
         },
       });

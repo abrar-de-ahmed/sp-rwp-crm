@@ -97,10 +97,6 @@ function getMenuItems(role: string): NavItem[] {
   return items;
 }
 
-function getSettingsItem(): NavItem {
-  return { id: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" /> };
-}
-
 interface SidebarProps {
   role: string;
   activePage: PageId;

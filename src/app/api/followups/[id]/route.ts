@@ -149,7 +149,7 @@ export async function PUT(
       });
     }
 
-    // If escalated, create notification
+    // If escalated, create notification with link to the lead
     if (status === 'ESCALATED' && escalatedToId) {
       await db.notification.create({
         data: {
@@ -157,6 +157,7 @@ export async function PUT(
           type: 'ESCALATION',
           title: 'Follow-Up Escalated',
           message: `Follow-up for ${followUp.lead.firstName} ${followUp.lead.lastName} has been escalated by ${session.user.name}`,
+          link: `leads:${followUp.leadId}`,
           sentVia: 'IN_APP',
         },
       });
