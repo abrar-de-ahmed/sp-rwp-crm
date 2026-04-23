@@ -1,0 +1,289 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ═══════════════════════════════════
+// USERS & AUTH
+// ═══════════════════════════════════
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  phone        String?
+  passwordHash String
+  role         String   @default("SALES_REP") // SUPER_ADMIN, ADMIN, SALES_REP
+  avatarUrl    String?
+  isActive     Boolean  @default(true)
+  lastLogin    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  assignedLeads     Lead[]       @relation("AssignedRep")
+  calls             Call[]
+  followUpsAssigned FollowUp[]   @relation("AssignedTo")
+  followUpsEscalated FollowUp[]  @relation("EscalatedTo")
+  conversations     Conversation[]
+  notifications     Notification[]
+  reviewedInsights  AIInsight[]  @relation("InsightReviewer")
+  memberships       Membership[]
+
+  @@index([role])
+  @@index([isActive])
+}
+
+// ═══════════════════════════════════
+// LEADS
+// ═══════════════════════════════════
+
+model Lead {
+  id                    String   @id @default(cuid())
+  firstName             String
+  lastName              String
+  phone                 String
+  email                 String?
+  whatsappNumber        String?
+  source                String   @default("MANUAL_IMPORT") // META_AD, WHATSAPP, INSTAGRAM, FACEBOOK, WEBSITE, WALK_IN, REFERRAL, MANUAL_IMPORT
+  leadType              String   @default("OTHER") // MEMBERSHIP, DAY_PASS, CORPORATE, EVENT, CORPORATE_EVENT, TOURNAMENT, CAMP, OTHER
+  interestedFacilities  String   @default("[]") // JSON array string
+  leadScore             Int      @default(50)
+  temperature           String   @default("COLD") // HOT, WARM, COLD
+  status                String   @default("NEW") // NEW, CONTACTED, INTERESTED, NEGOTIATION, BOOKED, LOST, RECOVERED
+  assignedRepId         String?
+  assignedRep           User?    @relation("AssignedRep", fields: [assignedRepId], references: [id])
+  familySize            Int?
+  budgetRange           String?  // UNDER_10K, 10K_15K, 15K_25K, 25K_50K, 50K_PLUS, NOT_DISCLOSED
+  lostReason            String?  // NOT_INTERESTED, WRONG_NUMBER, UNREACHABLE, WENT_COMPETITOR, BUDGET, OTHER
+  metaAdCampaign        String?
+  metaAdCreative        String?
+  remarks               String   @default("")
+  tags                  String   @default("[]") // JSON array string
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  calls        Call[]
+  conversations Conversation[]
+  followUps    FollowUp[]
+  memberships  Membership[]
+  auditLogs    AuditLog[]  @relation("AuditLead")
+
+  @@index([phone])
+  @@index([status])
+  @@index([assignedRepId])
+  @@index([temperature])
+  @@index([source])
+  @@index([createdAt])
+}
+
+// ═══════════════════════════════════
+// CALLS
+// ═══════════════════════════════════
+
+model Call {
+  id                    String   @id @default(cuid())
+  leadId                String
+  lead                  Lead     @relation(fields: [leadId], references: [id])
+  repId                 String
+  rep                   User     @relation(fields: [repId], references: [id])
+  direction             String   @default("OUTBOUND") // OUTBOUND, INBOUND
+  callTimestamp         DateTime @default(now())
+  durationSeconds       Int      @default(0)
+  status                String   @default("NO_ANSWER") // COMPLETED, NO_ANSWER, BUSY, FAILED, CANCELLED
+  outcome               String   @default("UNANSWERED") // ANSWERED, HUNG_UP_BY_CUSTOMER, HUNG_UP_BY_REP, UNANSWERED, BUSY, WRONG_NUMBER, VOICEMAIL
+  recordingUrl          String?
+  transcriptText        String?
+  aiSummary             String?
+  aiExtractedInterest   String?  @default("[]") // JSON array
+  aiExtractedBudget     String?
+  aiExtractedObjections String?  @default("[]") // JSON array
+  aiExtractedTimeline   String?
+  aiSentiment           String?  // POSITIVE, NEUTRAL, NEGATIVE
+  aiCoachingFlag        Boolean  @default(false)
+  aiCoachingNote        String?
+  repRemarks            String?
+  createdAt             DateTime @default(now())
+
+  @@index([leadId])
+  @@index([repId])
+  @@index([callTimestamp])
+}
+
+// ═══════════════════════════════════
+// CONVERSATIONS (Unified Inbox)
+// ═══════════════════════════════════
+
+model Conversation {
+  id           String   @id @default(cuid())
+  leadId       String
+  lead         Lead     @relation(fields: [leadId], references: [id])
+  channel      String   // WHATSAPP, INSTAGRAM, FACEBOOK, SMS
+  direction    String   @default("INBOUND") // INBOUND, OUTBOUND
+  messageText  String
+  mediaUrl     String?
+  sentBy       String   @default("CUSTOMER") // AI_AGENT, SALES_REP, CUSTOMER
+  senderId     String?
+  sender       User?    @relation(fields: [senderId], references: [id])
+  aiAgentId    Int?
+  isRead       Boolean  @default(false)
+  timestamp    DateTime @default(now())
+
+  @@index([leadId])
+  @@index([channel])
+  @@index([timestamp])
+}
+
+// ═══════════════════════════════════
+// FOLLOW-UPS
+// ═══════════════════════════════════
+
+model FollowUp {
+  id               String    @id @default(cuid())
+  leadId           String
+  lead             Lead      @relation(fields: [leadId], references: [id])
+  assignedToId     String
+  assignedTo       User      @relation("AssignedTo", fields: [assignedToId], references: [id])
+  dueDatetime      DateTime
+  priority         String    @default("NORMAL") // URGENT, HIGH, NORMAL, LOW
+  status           String    @default("PENDING") // PENDING, COMPLETED, MISSED, ESCALATED
+  reason           String?
+  lastCallSummary  String?
+  reminderSentAt   DateTime?
+  reminderSentVia  String?   // WHATSAPP, IN_APP, BOTH
+  escalatedToId    String?
+  escalatedTo      User?     @relation("EscalatedTo", fields: [escalatedToId], references: [id])
+  escalatedAt      DateTime?
+  completedAt      DateTime?
+  completionNotes  String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([leadId])
+  @@index([assignedToId])
+  @@index([status])
+  @@index([dueDatetime])
+}
+
+// ═══════════════════════════════════
+// MEMBERSHIPS
+// ═══════════════════════════════════
+
+model Membership {
+  id                   String   @id @default(cuid())
+  leadId               String
+  lead                 Lead     @relation(fields: [leadId], references: [id])
+  repId                String
+  rep                  User     @relation(fields: [repId], references: [id])
+  planType             String   // ANNUAL, BI_ANNUAL, MONTHLY_INSTALLMENT, CORPORATE
+  planName             String
+  startDate            DateTime
+  endDate              DateTime
+  familyMembersCount   Int      @default(1)
+  familyMemberNames    String?  @default("[]") // JSON array
+  status               String   @default("ACTIVE") // ACTIVE, EXPIRING, EXPIRED, RENEWED, CANCELLED
+  renewalReminderSent  Boolean  @default(false)
+  renewalReminderSentAt DateTime?
+  renewalDate          DateTime?
+  amountPaid           Float    @default(0)
+  paymentMethod        String?  // CASH, BANK_TRANSFER, OTHER
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([leadId])
+  @@index([status])
+  @@index([endDate])
+}
+
+// ═══════════════════════════════════
+// AUDIT LOG (Immutable)
+// ═══════════════════════════════════
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  actorType    String   // SUPER_ADMIN, ADMIN, SALES_REP, AI_AGENT, SYSTEM
+  actorId      String?
+  actorName    String
+  entityType   String   // LEAD, CALL, CONVERSATION, FOLLOW_UP, MEMBERSHIP, USER, SETTING
+  entityId     String?
+  action       String   // CREATE, UPDATE, DELETE, ASSIGN, ESCALATE, STATUS_CHANGE
+  fieldChanged String?
+  oldValue     String?
+  newValue     String?
+  remarks      String?
+  ipAddress    String?
+  createdAt    DateTime @default(now())
+
+  lead Lead? @relation("AuditLead", fields: [entityId], references: [id])
+
+  @@index([actorType])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([createdAt])
+}
+
+// ═══════════════════════════════════
+// NOTIFICATIONS
+// ═══════════════════════════════════
+
+model Notification {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  type         String   // NEW_LEAD, FOLLOW_UP_REMINDER, ESCALATION, CALL_OUTCOME, SYSTEM_ALERT, AI_INSIGHT
+  title        String
+  message      String
+  link         String?
+  isRead       Boolean  @default(false)
+  sentVia      String   @default("IN_APP") // IN_APP, WHATSAPP, BOTH
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+// ═══════════════════════════════════
+// AI INSIGHTS (Self-Improvement)
+// ═══════════════════════════════════
+
+model AIInsight {
+  id               String   @id @default(cuid())
+  agentId          Int
+  insightType      String   // PATTERN, SUGGESTION, COACHING, IMPROVEMENT
+  description      String
+  dataPoints       Int      @default(0)
+  confidenceScore  Float    @default(0)
+  proposedChange   String?
+  expectedImpact   String?
+  status           String   @default("PENDING_REVIEW") // PENDING_REVIEW, APPROVED, REJECTED, DEPLOYED
+  reviewedById     String?
+  reviewedBy       User?    @relation("InsightReviewer", fields: [reviewedById], references: [id])
+  reviewedAt       DateTime?
+  reviewNotes      String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([agentId])
+  @@index([status])
+}
+
+// ═══════════════════════════════════
+// CHANNEL CONNECTIONS
+// ═══════════════════════════════════
+
+model ChannelConnection {
+  id              String   @id @default(cuid())
+  channel         String   // FACEBOOK, INSTAGRAM, WHATSAPP
+  status          String   @default("DISCONNECTED") // CONNECTED, DISCONNECTED, EXPIRED
+  connectedAt     DateTime?
+  lastHeartbeatAt DateTime?
+  accessToken     String?  // encrypted for FB/IG
+  sessionData     String?  // encrypted JSON for WhatsApp
+  metadata        String?  // JSON for page ID, phone number, etc
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
