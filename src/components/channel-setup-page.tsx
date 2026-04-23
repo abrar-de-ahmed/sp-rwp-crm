@@ -15,6 +15,8 @@ import {
   AlertCircle,
   CheckCircle2,
   QrCode,
+  ShieldCheck,
+  Info,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -119,6 +121,10 @@ export default function ChannelSetupPage({ user }: { user: UserProps }) {
   const [pageAccessToken, setPageAccessToken] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
 
+  // Test connection state
+  const [testingToken, setTestingToken] = useState(false);
+  const [testResult, setTestResult] = useState<{ valid: boolean; pageName?: string; instagramAccount?: string; error?: string } | null>(null);
+
   const isSuperAdmin = user.role === 'SUPER_ADMIN';
 
   const fetchChannels = useCallback(async () => {
@@ -151,11 +157,51 @@ export default function ChannelSetupPage({ user }: { user: UserProps }) {
     setAppSecret('');
     setPageAccessToken('');
     setPhoneNumber('');
+    setTestResult(null);
   };
 
   const openDisconnectDialog = (channel: string) => {
     setSelectedChannel(channel);
     setDisconnectDialogOpen(true);
+  };
+
+  const handleTestConnection = async () => {
+    if (!selectedChannel || !pageAccessToken.trim()) {
+      toast({
+        title: 'Missing Token',
+        description: 'Please enter a Page Access Token before testing.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setTestingToken(true);
+    setTestResult(null);
+    try {
+      const res = await fetch('/api/channels/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel: selectedChannel, accessToken: pageAccessToken.trim() }),
+      });
+      const data = await res.json();
+      setTestResult(data);
+      if (data.valid) {
+        toast({
+          title: 'Token Valid',
+          description: `Connected to ${data.pageName || 'Meta'}${data.instagramAccount ? ' \u2014 Instagram: @' + data.instagramAccount : ''}. You can now save.`,
+        });
+      } else {
+        toast({
+          title: 'Token Invalid',
+          description: data.error || 'Token verification failed.',
+          variant: 'destructive',
+        });
+      }
+    } catch {
+      setTestResult({ valid: false, error: 'Network error. Please try again.' });
+      toast({ title: 'Error', description: 'Failed to test connection.', variant: 'destructive' });
+    } finally {
+      setTestingToken(false);
+    }
   };
 
   const handleConnect = async () => {
@@ -176,7 +222,7 @@ export default function ChannelSetupPage({ user }: { user: UserProps }) {
           setConnecting(null);
           return;
         }
-        metadata = { appId: appId.trim(), pageName: 'Sports Pavilion RWP' };
+        metadata = { appId: appId.trim(), pageName: testResult?.pageName || 'Sports Pavilion RWP' };
         accessToken = pageAccessToken.trim();
       } else if (selectedChannel === 'INSTAGRAM') {
         if (!appId.trim() || !appSecret.trim() || !pageAccessToken.trim()) {
@@ -188,7 +234,7 @@ export default function ChannelSetupPage({ user }: { user: UserProps }) {
           setConnecting(null);
           return;
         }
-        metadata = { appId: appId.trim(), linkedFbPage: 'Sports Pavilion RWP' };
+        metadata = { appId: appId.trim(), linkedFbPage: testResult?.pageName || 'Sports Pavilion RWP', instagramAccount: testResult?.instagramAccount || undefined };
         accessToken = pageAccessToken.trim();
       } else if (selectedChannel === 'WHATSAPP') {
         if (!phoneNumber.trim()) {
@@ -216,9 +262,10 @@ export default function ChannelSetupPage({ user }: { user: UserProps }) {
       if (res.ok) {
         toast({
           title: 'Channel Connected',
-          description: `${CHANNEL_INFO[selectedChannel]?.name ?? selectedChannel} has been connected successfully.`,
+          description: `${CHANNEL_INFO[selectedChannel]?.name ?? selectedChannel} has been connected successfully.${testResult?.pageName ? ` (${testResult.pageName})` : ''}`,
         });
         setConnectDialogOpen(false);
+        setTestResult(null);
         fetchChannels();
       } else {
         const data = await res.json();
@@ -507,7 +554,7 @@ export default function ChannelSetupPage({ user }: { user: UserProps }) {
             <DialogDescription>
               {selectedChannel === 'WHATSAPP'
                 ? 'Enter your WhatsApp Business phone number to start the connection process.'
-                : 'Enter your Meta App credentials to connect this channel.'}
+                : 'Follow the steps below to connect your Meta channel. All fields are required.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -532,15 +579,42 @@ export default function ChannelSetupPage({ user }: { user: UserProps }) {
             </div>
           ) : (
             <div className="space-y-4 py-2">
+              {/* Credential guide */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
+                <div className="flex items-start gap-2">
+                  <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                  <div className="text-xs text-blue-800 space-y-1">
+                    <p className="font-semibold">Where to find these credentials:</p>
+                    <ol className="list-decimal list-inside space-y-0.5 text-blue-700">
+                      <li>Go to <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer" className="underline font-medium hover:text-blue-900">developers.facebook.com/apps</a> and select your app</li>
+                      <li>In Settings &gt; Basic, copy the <strong>App ID</strong> and <strong>App Secret</strong></li>
+                      <li>Go to Tools &gt; Graph API Explorer</li>
+                      <li>Grant <strong>pages_messaging</strong>{selectedChannel === 'INSTAGRAM' ? ', instagram_basic, instagram_manage_messages' : ''} permissions</li>
+                      <li>Generate Access Token and copy it</li>
+                    </ol>
+                    <a
+                      href="https://developers.facebook.com/docs/graph-api/guides/access-tokens"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      Full Meta Access Token Guide
+                    </a>
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="appId">Meta App ID</Label>
                 <Input
                   id="appId"
                   placeholder="e.g. 123456789012345"
                   value={appId}
-                  onChange={(e) => setAppId(e.target.value)}
+                  onChange={(e) => { setAppId(e.target.value); setTestResult(null); }}
                 />
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="appSecret">App Secret</Label>
                 <Input
@@ -548,33 +622,80 @@ export default function ChannelSetupPage({ user }: { user: UserProps }) {
                   type="password"
                   placeholder="Enter your App Secret"
                   value={appSecret}
-                  onChange={(e) => setAppSecret(e.target.value)}
+                  onChange={(e) => { setAppSecret(e.target.value); setTestResult(null); }}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Found in your Meta App Settings &gt; Basic &gt; App Secret
+                  Meta App Dashboard &gt; Settings &gt; Basic &gt; App Secret
                 </p>
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="pageAccessToken">
-                  {selectedChannel === 'INSTAGRAM' ? 'Page Access Token' : 'Page Access Token'}
-                </Label>
+                <Label htmlFor="pageAccessToken">Page Access Token</Label>
                 <Input
                   id="pageAccessToken"
                   type="password"
                   placeholder="EAAxxxxx..."
                   value={pageAccessToken}
-                  onChange={(e) => setPageAccessToken(e.target.value)}
+                  onChange={(e) => { setPageAccessToken(e.target.value); setTestResult(null); }}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Generate from Graph API Explorer with pages_messaging permission
+                  Graph API Explorer &gt; Generate Access Token
                 </p>
+              </div>
+
+              {/* Test Connection */}
+              <div className="space-y-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={handleTestConnection}
+                  disabled={testingToken || !pageAccessToken.trim()}
+                >
+                  {testingToken
+                    ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
+                    : <ShieldCheck className="w-3.5 h-3.5 mr-2" />}
+                  {testingToken ? 'Verifying...' : 'Test Connection'}
+                </Button>
+
+                {testResult && (
+                  <div className={`rounded-lg p-3 ${
+                    testResult.valid
+                      ? 'bg-emerald-50 border border-emerald-200'
+                      : 'bg-red-50 border border-red-200'
+                  }`}>
+                    <div className="flex items-start gap-2">
+                      {testResult.valid
+                        ? <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                        : <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />}
+                      <div className="text-xs">
+                        {testResult.valid ? (
+                          <>
+                            <p className="font-semibold text-emerald-800">
+                              Token valid{testResult.pageName ? ' \u2014 ' + testResult.pageName : ''}
+                            </p>
+                            {testResult.instagramAccount && (
+                              <p className="text-emerald-700 mt-0.5">
+                                Instagram: @{testResult.instagramAccount}
+                              </p>
+                            )}
+                            <p className="text-emerald-600 mt-0.5">You can now save the connection.</p>
+                          </>
+                        ) : (
+                          <p className="text-red-700 font-medium">{testResult.error || 'Token verification failed.'}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {selectedChannel === 'INSTAGRAM' && (
                 <div className="bg-pink-50 border border-pink-200 rounded-lg p-3">
                   <p className="text-xs text-pink-700">
-                    <strong>Note:</strong> Instagram must be linked to a Facebook Page. The Page Access Token
-                    must have instagram_manage_messages permission. Make sure your Instagram account is set to
+                    <strong>Note:</strong> Instagram must be linked to a Facebook Page. The token needs
+                    instagram_manage_messages permission. Set your Instagram account to
                     &quot;Business&quot; or &quot;Creator&quot; type.
                   </p>
                 </div>
@@ -583,25 +704,23 @@ export default function ChannelSetupPage({ user }: { user: UserProps }) {
           )}
 
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setConnectDialogOpen(false)}>
+            <Button variant="outline" onClick={() => { setConnectDialogOpen(false); setTestResult(null); }}>
               Cancel
             </Button>
             <Button
               onClick={handleConnect}
-              disabled={connecting !== null}
+              disabled={connecting !== null || (selectedChannel !== 'WHATSAPP' && testResult === null)}
             >
-              {connecting === selectedChannel ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Connecting...
-                </>
-              ) : (
-                <>
-                  <Plug className="w-4 h-4 mr-2" />
-                  Connect
-                </>
-              )}
+              {connecting === selectedChannel
+                ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                : <Plug className="w-4 h-4 mr-2" />}
+              {connecting === selectedChannel ? 'Connecting...' : 'Connect'}
             </Button>
+            {selectedChannel !== 'WHATSAPP' && testResult === null && (
+              <p className="text-xs text-muted-foreground text-center w-full">
+                Test your token first for a smoother setup
+              </p>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -623,14 +742,9 @@ export default function ChannelSetupPage({ user }: { user: UserProps }) {
               disabled={disconnecting}
               className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
             >
-              {disconnecting ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Disconnecting...
-                </>
-              ) : (
-                'Disconnect'
-              )}
+              {disconnecting
+                ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                : 'Disconnect'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

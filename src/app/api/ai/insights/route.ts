@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth-helpers';
+import { requireAuth, requireRole } from '@/lib/auth-helpers';
 import { db } from '@/lib/db';
 import { createAuditLog } from '@/lib/audit';
 

@@ -142,8 +142,34 @@ export default function AIAgentsPage({ user }: { user: UserProps }) {
 
   const openConfigDialog = (agent: AgentConfig) => {
     setSelectedAgent(agent);
-    setSystemPrompt('');
+    // Pre-fill with existing system prompt if available
+    setSystemPrompt((agent as Record<string, unknown>).systemPrompt as string || '');
     setConfigDialogOpen(true);
+  };
+
+  const handleToggleFromDialog = async (checked: boolean) => {
+    if (!selectedAgent) return;
+    try {
+      const res = await fetch('/api/ai-agents', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentId: selectedAgent.id, enabled: checked }),
+      });
+      if (res.ok) {
+        setSelectedAgent({ ...selectedAgent, enabled: checked });
+        setAgents((prev) =>
+          prev.map((a) => (a.id === selectedAgent.id ? { ...a, enabled: checked } : a)),
+        );
+        toast({
+          title: checked ? 'Agent Enabled' : 'Agent Disabled',
+          description: `${selectedAgent.name} has been ${checked ? 'enabled' : 'disabled'}.`,
+        });
+      } else {
+        toast({ title: 'Error', description: 'Failed to update agent status.', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Error', description: 'Something went wrong.', variant: 'destructive' });
+    }
   };
 
   const handleSaveConfig = async () => {
@@ -385,11 +411,7 @@ export default function AIAgentsPage({ user }: { user: UserProps }) {
                 <Switch
                   id="agent-status"
                   checked={selectedAgent?.enabled ?? false}
-                  onCheckedChange={(checked) => {
-                    if (selectedAgent) {
-                      setSelectedAgent({ ...selectedAgent, enabled: checked });
-                    }
-                  }}
+                  onCheckedChange={handleToggleFromDialog}
                 />
                 <span className="text-sm text-muted-foreground">
                   {selectedAgent?.enabled ? 'Active' : 'Inactive'}
