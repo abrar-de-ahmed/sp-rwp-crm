@@ -57,6 +57,17 @@ const EXPORT_OPTIONS: ExportOption[] = [
 ];
 
 export default function DataExportPage({ user }: { user: User }) {
+  if (user.role !== 'SUPER_ADMIN') {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Download className="w-12 h-12 mx-auto text-muted-foreground opacity-20" />
+          <p className="text-muted-foreground mt-3">Access Denied. Super Admin only.</p>
+        </div>
+      </div>
+    );
+  }
+
   const { toast } = useToast();
 
   const [exportType, setExportType] = useState<ExportType>('leads');
@@ -99,9 +110,24 @@ export default function DataExportPage({ user }: { user: User }) {
           records = (json.followUps as Record<string, unknown>[]) ?? [];
           break;
         case 'memberships':
+          // Fetch leads that have memberships and extract membership data
           res = await fetch('/api/leads?limit=1000');
           json = await res.json();
-          records = (json.leads as Record<string, unknown>[]) ?? [];
+          const allLeads = (json.leads as Record<string, unknown>[]) ?? [];
+          records = allLeads
+            .filter((l) => {
+              const memberships = l.memberships as Record<string, unknown>[] | undefined;
+              return memberships && memberships.length > 0;
+            })
+            .flatMap((l) => {
+              const memberships = l.memberships as Record<string, unknown>[];
+              return memberships.map((m) => ({
+                ...m,
+                leadName: `${l.firstName ?? ''} ${l.lastName ?? ''}`.trim(),
+                leadPhone: l.phone ?? '',
+                leadEmail: l.email ?? '',
+              }));
+            });
           break;
       }
 

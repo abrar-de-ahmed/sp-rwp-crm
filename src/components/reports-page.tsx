@@ -76,6 +76,17 @@ interface AIReport {
 const PIE_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#6366f1', '#ec4899', '#14b8a6'];
 
 export default function ReportsPage({ user }: { user: User }) {
+  if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <BarChart3 className="w-12 h-12 mx-auto text-muted-foreground opacity-20" />
+          <p className="text-muted-foreground mt-3">Access Denied. Admin only.</p>
+        </div>
+      </div>
+    );
+  }
+
   const { toast } = useToast();
 
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');

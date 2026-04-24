@@ -145,7 +145,7 @@ export default function AIAgentsPage({ user }: { user: UserProps }) {
   const openConfigDialog = (agent: AgentConfig) => {
     setSelectedAgent(agent);
     // Pre-fill with existing system prompt if available
-    setSystemPrompt((agent as Record<string, unknown>).systemPrompt as string || '');
+    setSystemPrompt(agent.systemPrompt || '');
     setConfigDialogOpen(true);
   };
 
@@ -367,7 +367,7 @@ export default function AIAgentsPage({ user }: { user: UserProps }) {
               return (
                 <div key={agent.id} className="flex items-start gap-3">
                   <div className={`rounded-lg p-1.5 ${colors.iconBg} shrink-0 mt-0.5`}>
-                    {React.cloneElement(icon as React.ReactElement, { className: 'w-4 h-4' })}
+                    {React.cloneElement(icon as React.ReactElement<{ className?: string }>, { className: 'w-4 h-4' })}
                   </div>
                   <div>
                     <p className="text-sm font-medium">{agent.name}</p>

@@ -121,6 +121,17 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function CallRecordingsPage({ user }: { user: PlaceholderUser }) {
+  if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Mic className="w-12 h-12 mx-auto text-muted-foreground opacity-20" />
+          <p className="text-muted-foreground mt-3">Access Denied. Admin only.</p>
+        </div>
+      </div>
+    );
+  }
+
   const [calls, setCalls] = useState<CallRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -181,13 +192,28 @@ export default function CallRecordingsPage({ user }: { user: PlaceholderUser }) 
     setRemarks(call.repRemarks ?? '');
   }
 
-  function handleSaveRemarks() {
-    // Update local state optimistically
-    setCalls((prev) =>
-      prev.map((c) => (c.id === selectedCall?.id ? { ...c, repRemarks: remarks } : c))
-    );
-    if (selectedCall) {
+  const [savingRemarks, setSavingRemarks] = useState(false);
+
+  async function handleSaveRemarks() {
+    if (!selectedCall) return;
+    setSavingRemarks(true);
+    try {
+      const res = await fetch(`/api/leads/${selectedCall.leadId}/remarks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: `[Call Recording Note] ${remarks}` }),
+      });
+      if (!res.ok) throw new Error('Failed to save remarks');
+      // Update local state optimistically
+      setCalls((prev) =>
+        prev.map((c) => (c.id === selectedCall.id ? { ...c, repRemarks: remarks } : c))
+      );
       setSelectedCall({ ...selectedCall, repRemarks: remarks });
+      // Note: Toast import not present, using alert as fallback
+    } catch {
+      alert('Failed to save remarks. Please try again.');
+    } finally {
+      setSavingRemarks(false);
     }
   }
 

@@ -12,6 +12,17 @@ interface PlaceholderUser {
 }
 
 export default function SettingsPage({ user }: { user: PlaceholderUser }) {
+  if (user.role !== 'SUPER_ADMIN') {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Settings className="w-12 h-12 mx-auto text-muted-foreground opacity-20" />
+          <p className="text-muted-foreground mt-3">Access Denied. Super Admin only.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Card className="max-w-lg mx-auto mt-20">
       <CardHeader className="text-center">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Fragment } from 'react';
 import {
   Search,
   Filter,
@@ -377,9 +377,8 @@ export default function CallHistoryPage({
                 calls.map((call) => {
                   const isExpanded = expandedCallId === call.id;
                   return (
-                    <>
+                    <Fragment key={call.id}>
                       <TableRow
-                        key={call.id}
                         className="cursor-pointer hover:bg-emerald-50/50 transition-colors"
                         onClick={() => onNavigateToLead?.(call.leadId)}
                       >
@@ -481,7 +480,7 @@ export default function CallHistoryPage({
                           </TableCell>
                         </TableRow>
                       )}
-                    </>
+                    </Fragment>
                   );
                 })
               )}

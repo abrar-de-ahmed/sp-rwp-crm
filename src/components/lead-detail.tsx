@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Fragment } from 'react';
 import {
   ArrowLeft,
   Phone,
@@ -729,8 +729,8 @@ export default function LeadDetail({ leadId, user, onBack, onLeadUpdated }: Lead
                 </TableHeader>
                 <TableBody>
                   {lead.calls.map((call) => (
-                    <>
-                      <TableRow key={call.id}>
+                    <Fragment key={call.id}>
+                      <TableRow>
                         <TableCell className="text-xs">
                           {formatDateTime(call.callTimestamp)}
                         </TableCell>
@@ -782,8 +782,8 @@ export default function LeadDetail({ leadId, user, onBack, onLeadUpdated }: Lead
                         </TableCell>
                       </TableRow>
                       {expandedCall === call.id && call.aiSummary && (
-                        <TableRow key={`${call.id}-summary`}>
-                          <TableCell colSpan={6} className="bg-muted/50 px-4 py-3">
+                        <TableRow className="bg-muted/50">
+                          <TableCell colSpan={6} className="px-4 py-3">
                             <div className="space-y-1">
                               <p className="text-xs font-medium text-muted-foreground">AI Summary</p>
                               <p className="text-sm">{call.aiSummary}</p>
@@ -791,7 +791,7 @@ export default function LeadDetail({ leadId, user, onBack, onLeadUpdated }: Lead
                           </TableCell>
                         </TableRow>
                       )}
-                    </>
+                    </Fragment>
                   ))}
                 </TableBody>
               </Table>
