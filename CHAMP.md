@@ -1,7 +1,7 @@
 # CHAMP — Supervisor Agent | SP RWP CRM
 
 > **Last Updated:** 2026-04-25
-> **Session:** #5 (Current active session — Phase 3 Build)
+> **Session:** #5 (Current active session — Phase 3 + AI Learning)
 > **Project Owner:** Abrar Ahmed (GitHub: abrar-de-ahmed)
 
 ## HOW TO USE CHAMP (Read This First)
@@ -48,7 +48,8 @@ The AI will:
 | **UI Library** | shadcn/ui (new-york style, 43 components installed) |
 | **Database** | SQLite via Prisma ORM 6.11 (file: db/custom.db) |
 | **Auth** | NextAuth.js v4 (JWT strategy, 24h sessions) |
-| **AI** | z-ai-web-dev-sdk (gpt-4o-mini) |
+| **AI** | z-ai-web-dev-sdk (glm-4-plus, free tier) |
+| **AI Learning** | Self-learning engine — grows smarter every day from conversations |
 | **Meta API** | Meta Graph API v19.0 (Facebook + Instagram) |
 | **WhatsApp** | WhatsApp Cloud API via Meta Business |
 | **Email** | Resend API (REST, no npm package) |
@@ -104,12 +105,12 @@ src/
 │   ├── page.tsx                    # Entry: AuthGate → Login or CRMLayout
 │   ├── layout.tsx                  # Root layout: fonts, Toaster
 │   ├── globals.css                 # Tailwind + oklch theme variables
-│   └── api/                        # 37 API route files (see Section 5)
+│   └── api/                        # 44 API route files (see Section 5)
 ├── components/
 │   ├── crm-layout.tsx              # SPA layout: sidebar + header + page router
-│   ├── sidebar.tsx                 # Role-based navigation (20 pages total)
+│   ├── sidebar.tsx                 # Role-based navigation (21 pages total)
 │   ├── header.tsx                  # Top bar: search, notifications, user menu
-│   ├── [20 page components].tsx    # All CRM page components
+│   ├── [21 page components].tsx    # All CRM page components
 │   ├── [dialog components].tsx     # Create forms (lead, follow-up, user)
 │   ├── login.tsx                   # Login form
 │   ├── notification-dropdown.tsx   # Bell icon dropdown
@@ -120,7 +121,8 @@ src/
 │   ├── auth.ts                     # NextAuth config (JWT, credentials)
 │   ├── auth-helpers.ts             # RBAC: requireAuth, requireRole, etc.
 │   ├── audit.ts                    # createAuditLog() writer
-│   ├── ai-agent.ts                 # 6 AI agents + FAQ + lead scoring
+│   ├── ai-agent.ts                 # 6 AI agents (glm-4-plus) + FAQ + lead scoring + learning
+│   ├── ai-learning.ts              # Self-learning engine (10 functions)
 │   ├── meta.ts                     # Meta Graph API client (FB + IG)
 │   ├── whatsapp.ts                 # WhatsApp Cloud API client
 │   ├── email.ts                    # Resend email client (7 templates)
@@ -131,13 +133,13 @@ src/
 │   ├── use-toast.ts                # Toast notifications
 │   └── use-mobile.ts               # Mobile detection
 prisma/
-├── schema.prisma                   # 10 tables, 289 lines
+├── schema.prisma                   # 11 tables
 └── seed.ts                         # 7 users, 5 leads, audit logs
 ```
 
 ---
 
-## 4. DATABASE SCHEMA (10 Tables)
+## 4. DATABASE SCHEMA (11 Tables)
 
 ### User
 - Fields: id, name, email (unique), phone, passwordHash, role, avatarUrl, isActive, lastLogin, createdAt, updatedAt
@@ -187,9 +189,14 @@ prisma/
 - Fields: id, channel, status, connectedAt, lastHeartbeatAt, accessToken, sessionData, metadata
 - Channels: FACEBOOK, INSTAGRAM, WHATSAPP
 
+### AILearning (Self-Improvement)
+- Fields: id, type, category, input, output, context (JSON), feedback (positive/negative/neutral), confidence (0-1), frequency, sourceAgent, leadId, channel, language, status (PENDING_REVIEW/APPROVED/REJECTED/AUTO_APPROVED/DEPLOYED), reviewedById, reviewedAt, reviewNotes, deployedAt
+- Types: FAQ_CANDIDATE, RESPONSE_FEEDBACK, PATTERN_DISCOVERED, CONVERSATION_OUTCOME, KNOWLEDGE_UPDATE
+- Categories: question_answer, objection_handling, pricing_response, facility_info, booking_flow, sentiment_pattern, conversion_strategy
+
 ---
 
-## 5. API ROUTES (33 Routes)
+## 5. API ROUTES (44 Routes)
 
 | Route | Methods | Auth | Purpose |
 |-------|---------|------|---------|
@@ -234,10 +241,17 @@ prisma/
 | `/api/email/templates` | GET | SA only | Email template catalog |
 | `/api/workflows` | GET, PUT | SA only | Workflow management |
 | `/api/workflows/check` | POST | ADMIN+ | Manual workflow trigger |
+| `/api/ai/learning/stats` | GET | ADMIN+ | Learning statistics |
+| `/api/ai/learning/patterns` | GET | ADMIN+ | Learning records (filterable) |
+| `/api/ai/learning/feedback` | POST | Any auth | Submit feedback on AI response |
+| `/api/ai/learning/analyze` | POST | ADMIN+ | Trigger pattern discovery |
+| `/api/ai/learning/suggest` | POST | Any auth | AI-suggested smart reply |
+| `/api/ai/learning/faqs` | GET, PUT | ADMIN+ | FAQ candidate management |
+| `/api/ai/learning/[id]` | GET, PUT | ADMIN+ | Individual learning record |
 
 ---
 
-## 6. ALL PAGES (20 Total — ALL WORKING)
+## 6. ALL PAGES (21 Total — ALL WORKING)
 
 | Page ID | Component | Access | Description |
 |---------|-----------|--------|-------------|
@@ -260,6 +274,7 @@ prisma/
 | audit-log | audit-log-page.tsx | ADMIN+ | Audit log viewer |
 | settings | settings-page.tsx | SA only | System settings |
 | help | help-page.tsx | All | FAQ + onboarding tour reset |
+| ai-learning | ai-learning-page.tsx | SA only | AI learning dashboard (stats, patterns, FAQ candidates, settings) |
 | login | login.tsx | Public | Login form |
 
 ---
@@ -289,25 +304,37 @@ prisma/
 | Channel test | N | N | Y |
 | Email send | N | Y | Y |
 | Workflow manage | N | N | Y |
-| Sidebar items | 7 | 11 | 20 |
+| Sidebar items | 7 | 11 | 21 |
 
 ### Sidebar Items by Role
 - **SALES_REP (7):** Unified Inbox, Dashboard, My Leads, Pipeline, Follow-Ups, Call History, Help
 - **ADMIN (11):** All SALES_REP + Team, Call Recordings, Reports, Memberships
-- **SUPER_ADMIN (20):** All ADMIN + AI Agents, AI Insights, Channel Setup, Data Export, Audit Log, Data Import, Settings, Team Management
+- **SUPER_ADMIN (21):** All ADMIN + AI Agents, AI Insights, AI Learning, Channel Setup, Data Export, Audit Log, Data Import, Settings, Team Management
 
 ---
 
-## 8. AI AGENTS (6 Total)
+## 8. AI AGENTS (6 Total — glm-4-plus)
 
 | # | Agent | Model | Temp | Purpose |
 |---|-------|-------|------|---------|
-| 1 | Lead Scoring Engine | gpt-4o-mini | 0.2 | Hybrid rule-based + LLM scoring (0-100) |
-| 2 | Customer Bot | gpt-4o-mini | 0.5 | Multi-language FAQ (EN/Urdu/Roman Urdu) + LLM chat |
-| 3 | Call Monitor | gpt-4o-mini | 0.3 | Call transcript analysis, sentiment, coaching |
-| 4 | Follow-Up Agent | gpt-4o-mini | 0.4 | Follow-up timing + message suggestions |
-| 5 | Reporting Agent | gpt-4o-mini | 0.5 | Daily/weekly/monthly performance reports |
-| 6 | Data Quality Agent | gpt-4o-mini | 0.3 | CRM data quality auditing |
+| 1 | Lead Scoring Engine | glm-4-plus | 0.2 | Hybrid rule-based + LLM scoring (0-100) |
+| 2 | Customer Bot | glm-4-plus | 0.5 | Multi-language FAQ (EN/Urdu/Roman Urdu) + LLM chat + self-learning |
+| 3 | Call Monitor | glm-4-plus | 0.3 | Call transcript analysis, sentiment, coaching |
+| 4 | Follow-Up Agent | glm-4-plus | 0.4 | Follow-up timing + message suggestions |
+| 5 | Reporting Agent | glm-4-plus | 0.5 | Daily/weekly/monthly performance reports |
+| 6 | Data Quality Agent | glm-4-plus | 0.3 | CRM data quality auditing |
+
+### AI Self-Learning System
+- **Engine:** `src/lib/ai-learning.ts` (10 core functions)
+- **Records every AI conversation** — input, output, channel, language, outcome
+- **Feedback loop:** BOOKED=positive, LOST=negative, rep overrides=corrections
+- **FAQ auto-discovery:** Recurring unanswered questions → suggested FAQ candidates
+- **Pattern discovery:** Conversion keywords, objection patterns, channel performance
+- **Dynamic knowledge base:** Approved learnings fed back into AI system prompts
+- **Auto-approval:** frequency >= 5 AND positive feedback >= 70%
+- **5-minute cache:** Learning context cached in-memory for performance
+- **Dashboard:** AI Learning page (SUPER_ADMIN) — stats, patterns, FAQ candidates, settings
+- **Database:** AILearning table (type, category, input, output, feedback, confidence, frequency, status)
 
 ---
 
@@ -367,6 +394,11 @@ CLOUDFLARE_ZONE_ID=[pending - no domain added yet]
 | Session 4 | CHAMP.md supervisor agent | Context continuity across chat sessions | User + AI |
 | Session 4 | "Fire in the hole" code word | Quick activation protocol | User |
 | Session 4 | Zero-cost stack (Meta WhatsApp, Resend, Neon, Cloudflare Pages) | No spending until revenue | User + AI |
+| Session 5 | Switch from gpt-4o-mini to glm-4-plus | Free tier, upgrade to paid when revenue starts | User |
+| Session 5 | AI Self-Learning Engine | System gets smarter every day from conversations | User + AI |
+| Session 5 | AILearning table (11 tables total) | Persistent memory for AI learning patterns | AI |
+| Session 5 | Auto-approve learnings at high confidence | Reduce manual review burden while maintaining quality | AI |
+| Session 5 | 3-tier AI response: Handoff → Enhanced FAQ → LLM | Cost optimization + learning injection | AI |
 
 ---
 
@@ -571,13 +603,25 @@ npm run dev
 3. [x] Test all API routes
 4. [x] Update CHAMP.md with QA results
 5. [x] Push final code to GitHub
+6. [x] Real AI integration — all 6 agents working with z-ai-web-dev-sdk
+7. [x] Meta/Facebook integration — webhook + AI auto-response + outbound
+8. [x] Instagram integration — DM + comment webhooks + AI response
+9. [x] WhatsApp Cloud API — webhook + AI 3-tier response + templates
+10. [x] Email automation — Resend 7 templates
+11. [x] Workflow automation engine — 8 workflows, wired into routes
+12. [x] Unified Inbox page — 3-column messaging UI
+13. [x] Model switch: gpt-4o-mini → glm-4-plus (free tier)
+14. [x] AI Self-Learning Engine — conversation memory, FAQ discovery, pattern detection
+15. [x] AI Learning Dashboard — stats, patterns, FAQ candidates, settings
+16. [x] AILearning database table (11 tables total)
 
-### Phase 3 Start (Next)
-1. [ ] Real AI integration with z-ai-web-dev-sdk
-2. [ ] Meta WhatsApp Cloud API setup
-3. [ ] Email automation with Resend
-4. [ ] Workflow automation engine
-5. [ ] Mobile responsive pass
+### Phase 3 Testing (Next)
+1. [ ] Set up Meta Developer App for craftedmindss
+2. [ ] Connect Facebook page + test webhooks
+3. [ ] Connect Instagram + test webhooks
+4. [ ] Set up WhatsApp Business number + test
+5. [ ] Set up Resend account + test emails
+6. [ ] Mobile responsive pass
 
 ### Phase 4 (Production)
 1. [ ] Cloudflare Pages deployment
