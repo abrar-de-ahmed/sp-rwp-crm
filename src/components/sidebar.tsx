@@ -14,6 +14,7 @@ import {
   CreditCard,
   Bot,
   Brain,
+  BrainCircuit,
   Wifi,
   Download,
   FileText,
@@ -43,6 +44,7 @@ export type PageId =
   | 'memberships'
   | 'ai-agents'
   | 'ai-insights'
+  | 'ai-learning'
   | 'channel-setup'
   | 'data-export'
   | 'audit-log'
@@ -76,6 +78,7 @@ const adminItems: NavItem[] = [
 const superAdminItems: NavItem[] = [
   { id: 'ai-agents', label: 'AI Agents', icon: <Bot className="w-4 h-4" /> },
   { id: 'ai-insights', label: 'AI Insights', icon: <Brain className="w-4 h-4" /> },
+  { id: 'ai-learning', label: 'AI Learning', icon: <BrainCircuit className="w-4 h-4" /> },
   { id: 'channel-setup', label: 'Channel Setup', icon: <Wifi className="w-4 h-4" /> },
   { id: 'data-export', label: 'Data Export', icon: <Download className="w-4 h-4" /> },
   { id: 'audit-log', label: 'Audit Log', icon: <FileText className="w-4 h-4" /> },
@@ -207,6 +210,7 @@ export const pageTitles: Record<PageId, string> = {
   memberships: 'Memberships',
   'ai-agents': 'AI Agents',
   'ai-insights': 'AI Insights',
+  'ai-learning': 'AI Learning',
   'channel-setup': 'Channel Setup',
   'data-export': 'Data Export',
   'audit-log': 'Audit Log',

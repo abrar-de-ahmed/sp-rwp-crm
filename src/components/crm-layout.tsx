@@ -16,6 +16,7 @@ import HelpPage from '@/components/help-page';
 import ChannelSetupPage from '@/components/channel-setup-page';
 import AIAgentsPage from '@/components/ai-agents-page';
 import AIInsightsPage from '@/components/ai-insights-page';
+import AILearningPage from '@/components/ai-learning-page';
 import ReportsPage from '@/components/reports-page';
 import DataExportPage from '@/components/data-export-page';
 import MembershipsPage from '@/components/memberships-page';
@@ -46,6 +47,7 @@ const SIDEBAR_LABEL_MAP: Record<string, string> = {
   Memberships: 'sidebar-memberships',
   'AI Agents': 'sidebar-ai-agents',
   'AI Insights': 'sidebar-ai-insights',
+  'AI Learning': 'sidebar-ai-learning',
   'Channel Setup': 'sidebar-channel-setup',
   'Data Export': 'sidebar-data-export',
   'Audit Log': 'sidebar-audit-log',
@@ -243,6 +245,13 @@ export default function CRMLayout({
     if (activePage === 'ai-insights') {
       return (
         <AIInsightsPage
+          user={{ id: userId, name: userName, email: userEmail, role: userRole }}
+        />
+      );
+    }
+    if (activePage === 'ai-learning') {
+      return (
+        <AILearningPage
           user={{ id: userId, name: userName, email: userEmail, role: userRole }}
         />
       );

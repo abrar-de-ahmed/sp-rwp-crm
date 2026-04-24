@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-helpers';
-import { callLLM, parseJSONResponse, matchFAQ, detectLanguage, shouldHandoffToHuman } from '@/lib/ai-agent';
+import { callLLM, parseJSONResponse, getEnhancedFAQMatch, detectLanguage, shouldHandoffToHuman } from '@/lib/ai-agent';
 import { db } from '@/lib/db';
 import { createAuditLog } from '@/lib/audit';
+import { recordAIConversation, getLearningContext } from '@/lib/ai-learning';
 
 // ──────────────────────────────────────
 // POST /api/ai/chat — Customer-facing bot
+// Enhanced with AI Learning Engine integration
 // ──────────────────────────────────────
 export async function POST(request: NextRequest) {
   try {
@@ -28,9 +30,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const detectedLang = detectLanguage(messageText);
+    let responseSource: 'faq_match' | 'llm' | 'handoff' = 'llm';
+    let aiMessage = '';
+
+    // Fetch lead info for context
+    let leadStatus = 'NEW';
+    let leadTemperature = 'COLD';
+    if (leadId) {
+      const lead = await db.lead.findUnique({
+        where: { id: leadId },
+        select: { status: true, temperature: true },
+      });
+      if (lead) {
+        leadStatus = lead.status;
+        leadTemperature = lead.temperature;
+      }
+    }
+
     // 1. Check for handoff triggers
     if (shouldHandoffToHuman(messageText)) {
-      // Log the handoff request
       await createAuditLog({
         actorType: 'AI_AGENT',
         actorId: '2',
@@ -41,30 +60,67 @@ export async function POST(request: NextRequest) {
         remarks: `Handoff requested via ${channel}: "${messageText.substring(0, 100)}"`,
       });
 
-      const lang = detectLanguage(messageText);
       const handoffMessages = {
         english: "I'll connect you with one of our team members who can help you better. Please hold on for a moment!",
         urdu: 'میں آپ کو ہماری ٹیم کے کسی رکن سے جوڑ دوں گا جو آپ کی بہتر مدد کر سکے۔ براہ کرم ایک لمحہ انتظار کریں!',
         roman_urdu: 'Main aap ko hamare team ke kisi member se connect kar doon ga jo aap ki behtar madad kar sake. Bara karm ek lamha intezar karein!',
       };
 
+      aiMessage = handoffMessages[detectedLang];
+      responseSource = 'handoff';
+
+      // Record conversation (non-blocking)
+      if (leadId) {
+        recordAIConversation({
+          leadId,
+          channel,
+          customerMessage: messageText,
+          aiResponse: aiMessage,
+          agentId: 2,
+          responseSource,
+          language: detectedLang,
+          leadStatus,
+          leadTemperature,
+        }).catch(() => {});
+      }
+
       return NextResponse.json({
-        message: handoffMessages[lang],
+        message: aiMessage,
         handoffNeeded: true,
-        language: lang,
+        language: detectedLang,
         leadData: null,
+        source: 'handoff',
       });
     }
 
-    // 2. Try FAQ matching first (fast path)
-    const faqMatch = matchFAQ(messageText);
+    // 2. Try enhanced FAQ matching (static + dynamic from learning)
+    const faqMatch = await getEnhancedFAQMatch(messageText);
     if (faqMatch) {
+      aiMessage = faqMatch.answer;
+      responseSource = 'faq_match';
+
+      // Record conversation (non-blocking)
+      if (leadId) {
+        recordAIConversation({
+          leadId,
+          channel,
+          customerMessage: messageText,
+          aiResponse: aiMessage,
+          agentId: 2,
+          responseSource,
+          language: detectedLang,
+          leadStatus,
+          leadTemperature,
+        }).catch(() => {});
+      }
+
       return NextResponse.json({
-        message: faqMatch.answer,
+        message: aiMessage,
         handoffNeeded: false,
         language: faqMatch.language,
         leadData: null,
         source: 'faq_match',
+        faqSource: faqMatch.source, // 'static' or 'dynamic'
       });
     }
 
@@ -85,14 +141,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 4. Build prompt for LLM
-    const detectedLang = detectLanguage(messageText);
+    // 4. Get learning context for enhanced LLM prompt
+    const learningContext = await getLearningContext({ channel, language: detectedLang });
 
+    // 5. Build prompt for LLM
     const prompt = `Incoming message from ${channel}:
 ${conversationHistory ? `Conversation history:\n${conversationHistory}\n\n` : ''}Customer: ${messageText}
 
 Detected language: ${detectedLang}
-${leadId ? `Lead ID: ${leadId}` : 'No lead associated yet.'}
+${leadId ? `Lead ID: ${leadId}, Status: ${leadStatus}, Temperature: ${leadTemperature}` : 'No lead associated yet.'}
 
 Please respond to the customer's message. Remember to:
 - Reply in the same language detected (${detectedLang})
@@ -122,7 +179,12 @@ RULES:
 
 RESPOND ONLY WITH JSON: {"message": "<your reply>", "handoffNeeded": <boolean>, "leadData": {"interestedFacilities": ["<facilities>"], "urgency": "<low|medium|high>", "budgetInterest": <boolean>} or null}`;
 
-    const llmResponse = await callLLM(prompt, systemPrompt, { temperature: 0.5, maxTokens: 500 });
+    // Call LLM with learning context injected
+    const llmResponse = await callLLM(prompt, systemPrompt, {
+      temperature: 0.5,
+      maxTokens: 500,
+      learningContext: learningContext || undefined,
+    });
 
     let result;
     try {
@@ -139,7 +201,9 @@ RESPOND ONLY WITH JSON: {"message": "<your reply>", "handoffNeeded": <boolean>, 
       };
     }
 
-    // 5. Log AI conversation
+    aiMessage = result.message;
+
+    // 6. Log AI conversation (audit)
     if (leadId) {
       await createAuditLog({
         actorType: 'AI_AGENT',
@@ -148,12 +212,25 @@ RESPOND ONLY WITH JSON: {"message": "<your reply>", "handoffNeeded": <boolean>, 
         entityType: 'CONVERSATION',
         entityId: leadId,
         action: 'UPDATE',
-        remarks: `AI response via ${channel} (${detectedLang}): "${result.message.substring(0, 100)}"`,
+        remarks: `AI response via ${channel} (${detectedLang}): "${aiMessage.substring(0, 100)}"`,
       });
+
+      // Record conversation for learning (non-blocking)
+      recordAIConversation({
+        leadId,
+        channel,
+        customerMessage: messageText,
+        aiResponse: aiMessage,
+        agentId: 2,
+        responseSource,
+        language: detectedLang,
+        leadStatus,
+        leadTemperature,
+      }).catch(() => {});
     }
 
     return NextResponse.json({
-      message: result.message,
+      message: aiMessage,
       handoffNeeded: result.handoffNeeded ?? false,
       language: detectedLang,
       leadData: result.leadData,

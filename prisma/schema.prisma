@@ -32,6 +32,7 @@ model User {
   notifications     Notification[]
   reviewedInsights  AIInsight[]  @relation("InsightReviewer")
   memberships       Membership[]
+  reviewedLearnings  AILearning[]  @relation("LearningReviewer")
 
   @@index([role])
   @@index([isActive])
@@ -286,4 +287,39 @@ model ChannelConnection {
   metadata        String?  // JSON for page ID, phone number, etc
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+// ═══════════════════════════════════
+// AI LEARNING ENGINE (Self-Improvement)
+// ═══════════════════════════════════
+
+model AILearning {
+  id          String   @id @default(cuid())
+  type        String   // FAQ_CANDIDATE, RESPONSE_FEEDBACK, PATTERN_DISCOVERED, CONVERSATION_OUTCOME, KNOWLEDGE_UPDATE
+  category    String   // question_answer, objection_handling, pricing_response, facility_info, booking_flow, sentiment_pattern, conversion_strategy
+  input       String   // The original customer message or trigger
+  output      String   // The AI response or learned output
+  context     String?  // JSON — additional context (lead status, channel, language, etc.)
+  feedback    String   @default("neutral") // positive, negative, neutral
+  confidence  Float    @default(0) // 0-1 confidence score
+  frequency   Int      @default(1) // How often this pattern occurs
+  sourceAgent Int?     // Which AI agent produced this
+  leadId      String?  // Related lead (for outcome tracking)
+  channel     String?  // WHATSAPP, FACEBOOK, INSTAGRAM, SMS
+  language    String?  // english, urdu, roman_urdu
+  status      String   @default("PENDING_REVIEW") // PENDING_REVIEW, APPROVED, REJECTED, AUTO_APPROVED, DEPLOYED
+  reviewedById String?
+  reviewedBy  User?    @relation("LearningReviewer", fields: [reviewedById], references: [id])
+  reviewedAt  DateTime?
+  reviewNotes String?
+  deployedAt  DateTime? // When this learning was deployed into the AI system
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([type])
+  @@index([category])
+  @@index([status])
+  @@index([feedback])
+  @@index([frequency])
+  @@index([createdAt])
 }

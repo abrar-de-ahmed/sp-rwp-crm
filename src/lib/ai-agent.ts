@@ -1,4 +1,5 @@
 import ZAI from 'z-ai-web-dev-sdk';
+import { db } from '@/lib/db';
 
 // ──────────────────────────────────────
 // AI Agent Definitions
@@ -372,16 +373,31 @@ export function calculateLeadScore(input: LeadScoringInput): {
 }
 
 // ──────────────────────────────────────
-// ZAI SDK Helper
+// ZAI SDK Helper (Enhanced with Learning Context)
 // ──────────────────────────────────────
 
-export async function callLLM(prompt: string, systemPrompt: string, options?: { temperature?: number; maxTokens?: number }): Promise<string> {
+export async function callLLM(
+  prompt: string,
+  systemPrompt: string,
+  options?: {
+    temperature?: number;
+    maxTokens?: number;
+    learningContext?: string;
+  }
+): Promise<string> {
   try {
     const zai = await ZAI.create();
+
+    // Inject learning context into system prompt if provided
+    let enhancedSystemPrompt = systemPrompt;
+    if (options?.learningContext) {
+      enhancedSystemPrompt = `${systemPrompt}\n\n${options.learningContext}`;
+    }
+
     const response = await zai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'glm-4-plus',
       messages: [
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: enhancedSystemPrompt },
         { role: 'user', content: prompt },
       ],
       temperature: options?.temperature ?? 0.4,
@@ -425,6 +441,109 @@ export function matchFAQ(message: string): { answer: string; language: DetectedL
       };
       return { answer: answerMap[lang], language: lang };
     }
+  }
+
+  return null;
+}
+
+// ──────────────────────────────────────
+// Enhanced FAQ Matching (Static + Dynamic)
+// Checks static FAQs first, then approved dynamic FAQs from AILearning
+// ──────────────────────────────────────
+
+let dynamicFAQCache: {
+  data: Array<{ input: string; output: string; language: string; confidence: number }>;
+  timestamp: number;
+} | null = null;
+
+const DYNAMIC_FAQ_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+async function getDynamicFAQs(): Promise<Array<{ input: string; output: string; language: string; confidence: number }>> {
+  // Check cache first
+  if (dynamicFAQCache && Date.now() - dynamicFAQCache.timestamp < DYNAMIC_FAQ_CACHE_TTL_MS) {
+    return dynamicFAQCache.data;
+  }
+
+  try {
+    const approvedFAQs = await db.aILearning.findMany({
+      where: {
+        status: { in: ['APPROVED', 'AUTO_APPROVED', 'DEPLOYED'] },
+        type: { in: ['FAQ_CANDIDATE', 'KNOWLEDGE_UPDATE'] },
+        confidence: { gte: 0.6 },
+      },
+      orderBy: { confidence: 'desc' },
+      take: 50,
+      select: {
+        input: true,
+        output: true,
+        language: true,
+        confidence: true,
+      },
+    });
+
+    // Type cast: language can be null from DB but we treat it as string
+    const typedFAQs = approvedFAQs.map((f) => ({
+      input: f.input,
+      output: f.output,
+      language: f.language ?? 'english',
+      confidence: f.confidence,
+    }));
+
+    dynamicFAQCache = {
+      data: typedFAQs,
+      timestamp: Date.now(),
+    };
+
+    return typedFAQs;
+  } catch (error) {
+    console.error('[AI Agent] Failed to load dynamic FAQs:', error);
+    return [];
+  }
+}
+
+function fuzzyMatch(message: string, faqInput: string): number {
+  const msgTokens = new Set(message.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter((w) => w.length > 1));
+  const faqTokens = new Set(faqInput.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter((w) => w.length > 1));
+
+  if (msgTokens.size === 0 && faqTokens.size === 0) return 0;
+
+  let matches = 0;
+  for (const token of msgTokens) {
+    if (faqTokens.has(token)) matches++;
+  }
+
+  const union = new Set([...msgTokens, ...faqTokens]).size;
+  return union === 0 ? 0 : matches / union;
+}
+
+export async function getEnhancedFAQMatch(message: string): Promise<{ answer: string; language: DetectedLanguage; source: 'static' | 'dynamic' } | null> {
+  // Step 1: Check static FAQ (fast, no DB call)
+  const staticMatch = matchFAQ(message);
+  if (staticMatch) {
+    return { ...staticMatch, source: 'static' };
+  }
+
+  // Step 2: Check dynamic FAQs from AILearning table
+  const lang = detectLanguage(message);
+  const dynamicFAQs = await getDynamicFAQs();
+
+  let bestMatch: { answer: string; language: string; confidence: number; input: string } | null = null;
+  let bestSimilarity = 0;
+
+  for (const faq of dynamicFAQs) {
+    const similarity = fuzzyMatch(message, faq.input);
+    if (similarity >= 0.5 && similarity > bestSimilarity) {
+      bestSimilarity = similarity;
+      bestMatch = { ...faq, answer: faq.output };
+    }
+  }
+
+  if (bestMatch) {
+    return {
+      answer: bestMatch.answer,
+      language: (bestMatch.language as DetectedLanguage) || lang,
+      source: 'dynamic',
+    };
   }
 
   return null;
