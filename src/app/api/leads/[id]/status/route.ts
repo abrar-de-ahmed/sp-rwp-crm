@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth } from '@/lib/auth-helpers';
 import { createAuditLog } from '@/lib/audit';
+import { executeWorkflows } from '@/lib/workflow-engine';
 
 // ──────────────────────────────────────
 // PUT /api/leads/[id]/status — Update lead status
@@ -136,6 +137,15 @@ export async function PUT(
         },
       });
     }
+
+    // Trigger workflow: status change actions (follow-ups, notifications, etc.)
+    executeWorkflows('LEAD_STATUS_CHANGED', {
+      lead: updatedLead,
+      oldStatus,
+      newStatus: status,
+    }).catch((err) => {
+      console.error('[Workflow] LEAD_STATUS_CHANGED trigger failed:', err);
+    });
 
     return NextResponse.json({ lead: updatedLead });
   } catch (error) {

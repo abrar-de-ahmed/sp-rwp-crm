@@ -2,6 +2,7 @@
 
 import {
   LayoutDashboard,
+  Inbox,
   Users,
   Columns3,
   Clock,
@@ -30,6 +31,7 @@ import { signOut } from 'next-auth/react';
 
 export type PageId =
   | 'dashboard'
+  | 'unified-inbox'
   | 'leads'
   | 'pipeline'
   | 'follow-ups'
@@ -56,6 +58,7 @@ interface NavItem {
 
 const salesRepItems: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
+  { id: 'unified-inbox', label: 'Unified Inbox', icon: <Inbox className="w-4 h-4" /> },
   { id: 'leads', label: 'My Leads', icon: <Users className="w-4 h-4" /> },
   { id: 'pipeline', label: 'Pipeline', icon: <Columns3 className="w-4 h-4" /> },
   { id: 'follow-ups', label: 'Follow-Ups', icon: <Clock className="w-4 h-4" /> },
@@ -192,6 +195,7 @@ export function SidebarNav({ role, activePage, onNavigate, onClose, isMobile }: 
 // Page title mapping
 export const pageTitles: Record<PageId, string> = {
   dashboard: 'Dashboard',
+  'unified-inbox': 'Unified Inbox',
   leads: 'Leads',
   pipeline: 'Pipeline',
   'follow-ups': 'Follow-Ups',

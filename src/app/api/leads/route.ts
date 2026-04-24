@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth } from '@/lib/auth-helpers';
 import { createAuditLog } from '@/lib/audit';
+import { executeWorkflows } from '@/lib/workflow-engine';
 
 // ──────────────────────────────────────
 // GET /api/leads — List leads with filters
@@ -197,6 +198,11 @@ export async function POST(request: NextRequest) {
       entityId: lead.id,
       action: 'CREATE',
       remarks: `Created lead: ${lead.firstName} ${lead.lastName}`,
+    });
+
+    // Trigger workflow: auto-score new lead, notify rep, etc.
+    executeWorkflows('LEAD_CREATED', { lead }).catch((err) => {
+      console.error('[Workflow] LEAD_CREATED trigger failed:', err);
     });
 
     return NextResponse.json({ lead }, { status: 201 });

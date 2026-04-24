@@ -22,6 +22,7 @@ import MembershipsPage from '@/components/memberships-page';
 import SettingsPage from '@/components/settings-page';
 import TeamPage from '@/components/team-page';
 import CallRecordingsPage from '@/components/call-recordings-page';
+import UnifiedInboxPage from '@/components/unified-inbox-page';
 import OnboardingTour from '@/components/onboarding-tour';
 
 // ──────────────────────────────────────
@@ -51,6 +52,7 @@ const SIDEBAR_LABEL_MAP: Record<string, string> = {
   'Data Import': 'sidebar-data-import',
   Settings: 'sidebar-settings',
   'Team Management': 'sidebar-team-management',
+  'Unified Inbox': 'sidebar-unified-inbox',
 };
 
 function injectSidebarTargetIds() {
@@ -153,6 +155,13 @@ export default function CRMLayout({
           userRole={userRole}
           userName={userName}
           userId={userId}
+        />
+      );
+    }
+    if (activePage === 'unified-inbox') {
+      return (
+        <UnifiedInboxPage
+          user={{ id: userId, name: userName, email: userEmail, role: userRole }}
         />
       );
     }
