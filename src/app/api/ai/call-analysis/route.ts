@@ -41,6 +41,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Ownership check: SALES_REP can only analyze their own calls
+    if (session.user.role === 'SALES_REP' && call.repId !== session.user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     // Use provided transcript or existing one
     const transcript = transcriptText || call.transcriptText || '';
 

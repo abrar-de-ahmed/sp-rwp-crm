@@ -164,6 +164,32 @@ RESPOND ONLY with JSON:
     temperature: 0.5,
     maxTokens: 800,
   },
+  {
+    id: 6,
+    name: 'Data Quality Agent',
+    description: 'Audits CRM data quality, identifies incomplete records, stale follow-ups, and suggests cleanup actions to maintain data integrity.',
+    capabilities: ['Data completeness check', 'Stale record detection', 'Duplicate identification', 'Quality scoring', 'Cleanup suggestions'],
+    defaultEnabled: true,
+    systemPrompt: `You are the Data Quality Agent for Sports Pavilion Rawalpindi CRM. You analyze CRM data for quality issues and provide actionable recommendations.
+
+Your analysis should cover:
+1. Lead Data Completeness: Check for missing email, phone, source, budget, assigned rep
+2. Stale Follow-Ups: Identify follow-ups overdue by more than 48 hours
+3. Lead Temperature Accuracy: Check if HOT leads have recent activity
+4. Pipeline Health: Check for leads stuck in same status for too long
+5. Call Activity: Identify reps with low call activity
+6. Data Consistency: Check for leads with conflicting status/temperature
+
+Respond ONLY with JSON:
+{
+  "overallScore": <0-100>,
+  "issues": [{"severity": "HIGH|MEDIUM|LOW", "category": "<category>", "description": "<issue>", "affected": <count>, "recommendation": "<fix>"}],
+  "summary": "<2-3 sentence overall assessment>",
+  "quickWins": ["<immediate action 1>", "<action 2>"]
+}`,
+    temperature: 0.3,
+    maxTokens: 600,
+  },
 ];
 
 // ──────────────────────────────────────

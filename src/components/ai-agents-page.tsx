@@ -62,6 +62,7 @@ const AGENT_ICONS: Record<number, React.ReactNode> = {
   3: <PhoneCall className="w-6 h-6 text-amber-600" />,
   4: <Clock className="w-6 h-6 text-purple-600" />,
   5: <BarChart3 className="w-6 h-6 text-rose-600" />,
+  6: <Shield className="w-6 h-6 text-cyan-600" />,
 };
 
 const AGENT_COLORS: Record<number, { bg: string; border: string; iconBg: string }> = {
@@ -70,6 +71,7 @@ const AGENT_COLORS: Record<number, { bg: string; border: string; iconBg: string 
   3: { bg: 'bg-amber-50', border: 'border-amber-200', iconBg: 'bg-amber-100' },
   4: { bg: 'bg-purple-50', border: 'border-purple-200', iconBg: 'bg-purple-100' },
   5: { bg: 'bg-rose-50', border: 'border-rose-200', iconBg: 'bg-rose-100' },
+  6: { bg: 'bg-cyan-50', border: 'border-cyan-200', iconBg: 'bg-cyan-100' },
 };
 
 export default function AIAgentsPage({ user }: { user: UserProps }) {
@@ -217,7 +219,7 @@ export default function AIAgentsPage({ user }: { user: UserProps }) {
           <Skeleton className="h-4 w-96" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(5)].map((_, i) => (
+          {[...Array(6)].map((_, i) => (
             <Skeleton key={i} className="h-72 rounded-xl" />
           ))}
         </div>
@@ -235,7 +237,7 @@ export default function AIAgentsPage({ user }: { user: UserProps }) {
             AI Agents
           </h2>
           <p className="text-muted-foreground mt-1">
-            Configure and monitor your 5 AI agents for automated lead management and customer engagement.
+            Configure and monitor your 6 AI agents for automated lead management and customer engagement.
           </p>
         </div>
         <Badge variant="outline" className="text-emerald-600 border-emerald-300 shrink-0 mt-1">

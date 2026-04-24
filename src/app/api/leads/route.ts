@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check for existing phone number to prevent duplicates
-    const existing = await db.lead.findUnique({
+    const existing = await db.lead.findFirst({
       where: { phone: phone.trim() },
     });
     if (existing) {

@@ -103,6 +103,13 @@ RESPOND ONLY WITH JSON: {"score": <number>, "temperature": "<HOT|WARM|COLD>", "r
 
     // Update lead in DB if leadId provided
     if (leadId) {
+      // Ownership check: SALES_REP can only score their own leads
+      if (session.user.role === 'SALES_REP') {
+        const lead = await db.lead.findUnique({ where: { id: leadId }, select: { assignedRepId: true } });
+        if (!lead || lead.assignedRepId !== session.user.id) {
+          return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+      }
       await db.lead.update({
         where: { id: leadId },
         data: {

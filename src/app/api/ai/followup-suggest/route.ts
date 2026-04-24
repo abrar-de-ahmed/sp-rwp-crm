@@ -51,6 +51,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Ownership check: SALES_REP can only get suggestions for their own leads
+    if (session.user.role === 'SALES_REP' && lead.assignedRepId !== session.user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     // Build context for the AI
     const facilities = JSON.parse(lead.interestedFacilities || '[]') as string[];
     const lastInteraction = [

@@ -224,8 +224,9 @@ export async function GET() {
           { id: 1, name: 'Lead Scoring Engine', status: 'ACTIVE' },
           { id: 2, name: 'Customer Bot', status: 'ACTIVE' },
           { id: 3, name: 'Call Monitor', status: 'ACTIVE' },
-          { id: 4, name: 'Follow-Up Agent', status: 'INACTIVE' },
+          { id: 4, name: 'Follow-Up Agent', status: 'ACTIVE' },
           { id: 5, name: 'Reporting Agent', status: 'ACTIVE' },
+          { id: 6, name: 'Data Quality Agent', status: 'ACTIVE' },
         ];
       }
 
