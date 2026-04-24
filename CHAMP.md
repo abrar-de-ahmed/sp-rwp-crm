@@ -1,7 +1,7 @@
 # CHAMP — Supervisor Agent | SP RWP CRM
 
-> **Last Updated:** 2025-04-25
-> **Session:** #4 (Current active session)
+> **Last Updated:** 2026-04-25
+> **Session:** #5 (Current active session — Phase 3 Build)
 > **Project Owner:** Abrar Ahmed (GitHub: abrar-de-ahmed)
 
 ## HOW TO USE CHAMP (Read This First)
@@ -49,6 +49,9 @@ The AI will:
 | **Database** | SQLite via Prisma ORM 6.11 (file: db/custom.db) |
 | **Auth** | NextAuth.js v4 (JWT strategy, 24h sessions) |
 | **AI** | z-ai-web-dev-sdk (gpt-4o-mini) |
+| **Meta API** | Meta Graph API v19.0 (Facebook + Instagram) |
+| **WhatsApp** | WhatsApp Cloud API via Meta Business |
+| **Email** | Resend API (REST, no npm package) |
 | **Charts** | Recharts |
 | **Drag & Drop** | @dnd-kit/core + @dnd-kit/sortable |
 | **Icons** | lucide-react |
@@ -101,12 +104,12 @@ src/
 │   ├── page.tsx                    # Entry: AuthGate → Login or CRMLayout
 │   ├── layout.tsx                  # Root layout: fonts, Toaster
 │   ├── globals.css                 # Tailwind + oklch theme variables
-│   └── api/                        # 33 API route files (see Section 5)
+│   └── api/                        # 37 API route files (see Section 5)
 ├── components/
 │   ├── crm-layout.tsx              # SPA layout: sidebar + header + page router
-│   ├── sidebar.tsx                 # Role-based navigation (19 pages total)
+│   ├── sidebar.tsx                 # Role-based navigation (20 pages total)
 │   ├── header.tsx                  # Top bar: search, notifications, user menu
-│   ├── [19 page components].tsx    # All CRM page components
+│   ├── [20 page components].tsx    # All CRM page components
 │   ├── [dialog components].tsx     # Create forms (lead, follow-up, user)
 │   ├── login.tsx                   # Login form
 │   ├── notification-dropdown.tsx   # Bell icon dropdown
@@ -118,6 +121,11 @@ src/
 │   ├── auth-helpers.ts             # RBAC: requireAuth, requireRole, etc.
 │   ├── audit.ts                    # createAuditLog() writer
 │   ├── ai-agent.ts                 # 6 AI agents + FAQ + lead scoring
+│   ├── meta.ts                     # Meta Graph API client (FB + IG)
+│   ├── whatsapp.ts                 # WhatsApp Cloud API client
+│   ├── email.ts                    # Resend email client (7 templates)
+│   ├── workflow-engine.ts          # Workflow automation (8 workflows)
+│   ├── webhook-verify.ts           # HMAC-SHA256 webhook signature verify
 │   └── utils.ts                    # cn() utility
 ├── hooks/
 │   ├── use-toast.ts                # Toast notifications
@@ -187,9 +195,9 @@ prisma/
 |-------|---------|------|---------|
 | `/api` | GET | Any | Health check |
 | `/api/auth/[...nextauth]` | GET, POST | Public | NextAuth sign-in/sign-out |
-| `/api/leads` | GET, POST | Any auth | List (role-filtered), Create (round-robin) |
+| `/api/leads` | GET, POST | Any auth | List (role-filtered), Create (+ workflow trigger) |
 | `/api/leads/[id]` | GET, PUT, DELETE | Owner/Admin | Detail, Update, Soft-delete (SA only) |
-| `/api/leads/[id]/status` | PUT | Owner/Admin | Status change + auto-temperature |
+| `/api/leads/[id]/status` | PUT | Owner/Admin | Status change + auto-temperature + workflow |
 | `/api/leads/[id]/remarks` | POST | Owner/Admin | Append timestamped remark |
 | `/api/users` | GET, POST | SA only | List all, Create |
 | `/api/users/[id]` | GET, PUT, DELETE | SA only | Get, Update, Delete |
@@ -204,6 +212,7 @@ prisma/
 | `/api/import` | GET, POST | SA only | Import history, Bulk import |
 | `/api/team-members` | GET | ADMIN+ | Active team list |
 | `/api/channels` | GET, POST, DELETE | Read=Any, Write=SA | Channel CRUD |
+| `/api/channels/test` | POST | SA only | Test Meta/IG/WhatsApp connection |
 | `/api/ai-agents` | GET, PUT | Read=Any, Write=SA | AI config |
 | `/api/dashboard/stats` | GET | Any (role-scoped) | Dashboard aggregates |
 | `/api/dashboard/hot-leads` | GET | Any (role-filtered) | Hot leads |
@@ -215,13 +224,24 @@ prisma/
 | `/api/ai/report` | POST | Any (role-scoped) | Performance reports |
 | `/api/ai/data-quality` | POST | ADMIN+ | Data quality audit |
 | `/api/ai/call-analysis` | POST | Owner/Admin | Call analysis |
+| `/api/webhooks/meta` | GET, POST | Public | Meta FB/IG webhook receiver |
+| `/api/webhooks/whatsapp` | GET, POST | Public | WhatsApp webhook receiver |
+| `/api/conversations` | GET | Any | Unified inbox conversation list |
+| `/api/conversations/[leadId]` | GET | Any | Messages for a lead |
+| `/api/messaging/send` | POST | Rep+ | Send outbound message |
+| `/api/messaging/whatsapp/sessions` | GET, POST | Rep+ | WhatsApp session management |
+| `/api/email/send` | POST | ADMIN+ | Send email (7 templates) |
+| `/api/email/templates` | GET | SA only | Email template catalog |
+| `/api/workflows` | GET, PUT | SA only | Workflow management |
+| `/api/workflows/check` | POST | ADMIN+ | Manual workflow trigger |
 
 ---
 
-## 6. ALL PAGES (19 Total — ALL WORKING)
+## 6. ALL PAGES (20 Total — ALL WORKING)
 
 | Page ID | Component | Access | Description |
 |---------|-----------|--------|-------------|
+| unified-inbox | unified-inbox-page.tsx | All | 3-column messaging UI (FB/IG/WhatsApp/SMS), AI auto-response, read receipts |
 | dashboard | dashboard.tsx | All | KPI cards, hot leads, follow-ups, rep performance (ADMIN+), channel status, AI status |
 | leads | leads-page.tsx + lead-detail.tsx | All | Paginated table, search/filter, inline detail (tabs: info, calls, conversations, follow-ups, memberships, audit) |
 | pipeline | pipeline-page.tsx | All | Kanban board (6 columns), drag-and-drop |
@@ -264,12 +284,17 @@ prisma/
 | AI insights review | Read | Read | Y |
 | Data quality audit | N | Y | Y |
 | Dashboard rep perf | N | Y | Y |
-| Sidebar items | 6 | 10 | 19 |
+| Unified Inbox | Y (own leads) | Y (all) | Y (all) |
+| Send messages | Y (own) | Y (all) | Y (all) |
+| Channel test | N | N | Y |
+| Email send | N | Y | Y |
+| Workflow manage | N | N | Y |
+| Sidebar items | 7 | 11 | 20 |
 
 ### Sidebar Items by Role
-- **SALES_REP (6):** Dashboard, My Leads, Pipeline, Follow-Ups, Call History, Help
-- **ADMIN (10):** All SALES_REP + Team, Call Recordings, Reports, Memberships
-- **SUPER_ADMIN (19):** All ADMIN + AI Agents, AI Insights, Channel Setup, Data Export, Audit Log, Data Import, Settings, Team Management
+- **SALES_REP (7):** Unified Inbox, Dashboard, My Leads, Pipeline, Follow-Ups, Call History, Help
+- **ADMIN (11):** All SALES_REP + Team, Call Recordings, Reports, Memberships
+- **SUPER_ADMIN (20):** All ADMIN + AI Agents, AI Insights, Channel Setup, Data Export, Audit Log, Data Import, Settings, Team Management
 
 ---
 
