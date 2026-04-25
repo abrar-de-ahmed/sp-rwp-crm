@@ -6,10 +6,12 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("🌱 Seeding Sports Pavilion CRM database...\n");
 
-  // ── Hash the default password ──────────────────────────
-  const defaultPassword = "password123";
-  const passwordHash = await bcrypt.hash(defaultPassword, 12);
-  console.log(`  Password hash generated for "${defaultPassword}"`);
+  // ── Hash passwords ────────────────────────────────────
+  const adminPassword = "admin123";
+  const repPassword = "password123";
+  const adminHash = await bcrypt.hash(adminPassword, 12);
+  const repHash = await bcrypt.hash(repPassword, 12);
+  console.log(`  Password hashes generated`);
 
   // ── Create Users ──────────────────────────────────────
   console.log("\n  Creating users...");
@@ -21,52 +23,59 @@ async function main() {
         email: "admin@spcrm.com",
         role: "SUPER_ADMIN",
         phone: "03001234567",
+        password: adminHash,
       },
       {
         name: "Ahmed Manager",
         email: "manager@spcrm.com",
         role: "ADMIN",
         phone: "03009876543",
+        password: adminHash,
       },
       {
         name: "Ali Khan",
         email: "ali@spcrm.com",
         role: "SALES_REP",
         phone: "03121234567",
+        password: repHash,
       },
       {
         name: "Bilal Ahmed",
         email: "bilal@spcrm.com",
         role: "SALES_REP",
         phone: "03139876543",
+        password: repHash,
       },
       {
         name: "Sara Tariq",
         email: "sara@spcrm.com",
         role: "SALES_REP",
         phone: "03211234567",
+        password: repHash,
       },
       {
         name: "Omar Farooq",
         email: "omar@spcrm.com",
         role: "SALES_REP",
         phone: "03229876543",
+        password: repHash,
       },
       {
         name: "Zain Malik",
         email: "zain@spcrm.com",
         role: "SALES_REP",
         phone: "03331234567",
+        password: repHash,
       },
     ].map(async (u) => {
       const user = await prisma.user.upsert({
         where: { email: u.email },
-        update: {},
+        update: { passwordHash: u.password },
         create: {
           name: u.name,
           email: u.email,
           phone: u.phone,
-          passwordHash,
+          passwordHash: u.password,
           role: u.role,
           isActive: true,
         },
