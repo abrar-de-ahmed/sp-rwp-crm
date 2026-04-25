@@ -1,7 +1,7 @@
 # CHAMP — Supervisor Agent | SP RWP CRM
 
 > **Last Updated:** 2026-04-26
-> **Session:** #6 (Phase 3 verified complete — ready for Phase 3 testing / Phase 4)
+> **Session:** #7 (Agent Intelligence System deployed)
 > **Project Owner:** Abrar Ahmed (GitHub: abrar-de-ahmed)
 
 ## HOW TO USE CHAMP (Read This First)
@@ -15,10 +15,23 @@ Token: [GITHUB_TOKEN from user]
 ```
 
 The AI will:
-1. Pull CHAMP.md from this repo
-2. Understand the entire project
-3. Know exactly what to do next
-4. Continue seamlessly from where we left off
+1. Pull CHAMP.md from this repo (this file — the Supervisor)
+2. Read ALL agent files in the `agents/` directory
+3. Have the combined intelligence of every specialist
+4. Know exactly what to do next
+5. Continue seamlessly from where we left off
+
+### AGENT TEAM (7 Files in `agents/` directory)
+
+| Agent | File | Role |
+|-------|------|------|
+| **CHAMP** (me) | `CHAMP.md` (this file) | Supervisor — entry point, session handoff, high-level status |
+| **ARCHITECT** | `agents/ARCHITECTURE.md` | Technical Architect — every decision, pattern, bug, file structure |
+| **CRM BRAIN** | `agents/CRM_BRAIN.md` | Customer Intelligence — conversion patterns, objection handling, bot behavior |
+| **PLAYBOOK** | `agents/PLAYBOOK.md` | Operations — step-by-step procedures for every task |
+| **DOMAIN EXPERT** | `agents/CLIENT_CONTEXT.md` | Client-specific data — pricing, facilities, FAQs, business rules |
+| **RAG SPECIALIST** | `agents/RAG_PLAYBOOK.md` | Client Onboarding — how to clone/deploy for new organizations |
+| **QA EXPERT** | `agents/QA_EXPERT.md` | Senior QA — test checklists, regression tracking, quality standards |
 
 ---
 
@@ -378,6 +391,9 @@ CLOUDFLARE_ZONE_ID=[pending - no domain added yet]
 
 | Date | Decision | Reason | Made By |
 |------|----------|--------|---------|
+| Session 7 | Agent Intelligence System — 7 files | Persistent knowledge across sessions, cloneable for other clients | User + AI |
+| Session 7 | SPR focus (CraftedMinds for testing only) | Client wants to test on CraftedMinds, production on SPR | User |
+| Session 7 | QA Expert agent added | Ensure top quality, catch regressions | User + AI |
 | Session 1 | Use Next.js 14+ App Router | Modern, full-stack capable | AI |
 | Session 1 | SQLite via Prisma (not PostgreSQL) | Simpler setup, no external DB needed for dev | AI |
 | Session 1 | SPA pattern inside Next.js | Single layout, easier state management | AI |
@@ -399,6 +415,9 @@ CLOUDFLARE_ZONE_ID=[pending - no domain added yet]
 | Session 5 | AILearning table (11 tables total) | Persistent memory for AI learning patterns | AI |
 | Session 5 | Auto-approve learnings at high confidence | Reduce manual review burden while maintaining quality | AI |
 | Session 5 | 3-tier AI response: Handoff → Enhanced FAQ → LLM | Cost optimization + learning injection | AI |
+| Session 6 | Fixed login password mismatch | Seed had wrong password for admin | AI |
+| Session 6 | Removed AuditLog FK on entityId | FK to Lead.id caused crashes for non-Lead entities | AI |
+| Session 6 | WhatsApp dialog with proper fields | Phone Number ID + Token + Secret needed, not just phone | AI |
 
 ---
 
@@ -618,16 +637,36 @@ npm run dev
 14. [x] AI Self-Learning Engine — conversation memory, FAQ discovery, pattern detection
 15. [x] AI Learning Dashboard — stats, patterns, FAQ candidates, settings
 16. [x] AILearning database table (11 tables total)
+17. [x] Fix login password mismatch (admin123 vs password123)
+18. [x] Fix AuditLog FK constraint (removed Lead FK from entityId)
+19. [x] Create /api/channels/test route
+20. [x] Rebuild WhatsApp connect UI with proper fields
+21. [x] Agent Intelligence System — 7 agent files deployed
 
-### Phase 3 Testing (Next)
-1. [ ] Set up Meta Developer App for craftedmindss
-2. [ ] Connect Facebook page + test webhooks
-3. [ ] Connect Instagram + test webhooks
-4. [ ] Set up WhatsApp Business number + test
-5. [ ] Set up Resend account + test emails
-6. [ ] Mobile responsive pass
+### Phase 3A: Prove It Works (Next — After SPR verified)
+1. [ ] Set up Meta Developer App for SPR (not CraftedMinds — that's for testing)
+2. [ ] Connect SPR Facebook page + test webhooks
+3. [ ] Connect SPR Instagram + test webhooks
+4. [ ] Set up WhatsApp Business number for SPR + test
+5. [ ] Test AI bot with 10 real conversations
+6. [ ] Verify learning system records conversations
+7. [ ] Confirm workflows fire on real leads
+8. [ ] Set up Resend account + test emails
 
-### Phase 4 (Production)
+### Phase 3B: Build The Brain (After 3A proven)
+1. [ ] Populate CLIENT_CONTEXT.md with real SPR data (pricing, facilities, FAQs)
+2. [ ] Configure bot personality for SPR brand voice
+3. [ ] Set up Roman Urdu response templates
+4. [ ] Train objection handling patterns
+5. [ ] Configure follow-up timing rules
+
+### Phase 3C: Make CRM AI Smart (After 3B)
+1. [ ] SPR-specific knowledge base in the AI system
+2. [ ] Conversion pattern tracking
+3. [ ] Response template optimization
+4. [ ] Proactive follow-up triggers
+
+### Phase 4: Production (Paused)
 1. [ ] Cloudflare Pages deployment
 2. [ ] Neon PostgreSQL migration
 3. [ ] SPR domain + DNS setup
@@ -666,6 +705,23 @@ npm run dev
 ### Session 6 — Phase 3 Verification + Cleanup
 - Verified Phase 3 complete — all features built, build clean, code on GitHub
 - Updated CHAMP.md Phase 3 roadmap from "NEXT" → "COMPLETE"
+- Fixed login: admin password was `password123` not `admin123` in seed
+- Fixed channel connection: AuditLog FK constraint caused 500 on all channel operations
+- Created `/api/channels/test` route (was missing)
+- Rebuilt WhatsApp connect UI with proper fields (Phone Number ID, Access Token, App Secret)
+
+### Session 7 — Agent Intelligence System
+- Strategic discussion with client — aligned on product vision
+- Built 7-file Agent Intelligence System:
+  - ARCHITECTURE.md — Technical brain (tech stack, patterns, bugs, file map)
+  - CRM_BRAIN.md — Customer intelligence (conversion, objections, bot rules)
+  - PLAYBOOK.md — Operations (setup, deploy, configure, troubleshoot)
+  - CLIENT_CONTEXT.md — Domain expert (SPR template, pricing, FAQs)
+  - RAG_PLAYBOOK.md — Client onboarding (clone strategy, RAG pipeline)
+  - QA_EXPERT.md — Senior QA (37+ test cases, regression tracker, standards)
+- Updated CHAMP.md as Supervisor referencing all agent files
+- Client confirmed: SPR focus (not CraftedMinds — that's for testing only)
+- Client confirmed: Phase 4 paused, Phase 3 testing next after agent system locked
 
 ---
 
