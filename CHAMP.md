@@ -32,6 +32,7 @@ The AI will:
 | **DOMAIN EXPERT** | `agents/CLIENT_CONTEXT.md` | Client-specific data — pricing, facilities, FAQs, business rules |
 | **RAG SPECIALIST** | `agents/RAG_PLAYBOOK.md` | Client Onboarding — how to clone/deploy for new organizations |
 | **QA EXPERT** | `agents/QA_EXPERT.md` | Senior QA — test checklists, regression tracking, quality standards |
+| **EXPERT** | `agents/EXPERT.md` | Senior Technical Expert — code quality, architecture, performance, security |
 
 ---
 

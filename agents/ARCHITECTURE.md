@@ -208,7 +208,8 @@ agents/
 ├── PLAYBOOK.md                     # Operations procedures
 ├── CLIENT_CONTEXT.md               # Client-specific data
 ├── RAG_PLAYBOOK.md                 # Client onboarding
-└── QA_EXPERT.md                    # Quality assurance
+├── QA_EXPERT.md                    # Quality assurance
+└── EXPERT.md                       # Senior technical expert
 ```
 
 ---
