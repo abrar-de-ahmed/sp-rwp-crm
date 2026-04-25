@@ -14,7 +14,6 @@ import {
   ExternalLink,
   AlertCircle,
   CheckCircle2,
-  QrCode,
   ShieldCheck,
   Info,
 } from 'lucide-react';
@@ -49,7 +48,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Separator } from '@/components/ui/separator';
 
 interface UserProps {
   id: string;
@@ -120,6 +118,9 @@ export default function ChannelSetupPage({ user }: { user: UserProps }) {
   const [appSecret, setAppSecret] = useState('');
   const [pageAccessToken, setPageAccessToken] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [waPhoneNumberId, setWaPhoneNumberId] = useState('');
+  const [waAccessToken, setWaAccessToken] = useState('');
+  const [waAppSecret, setWaAppSecret] = useState('');
 
   // Test connection state
   const [testingToken, setTestingToken] = useState(false);
@@ -157,6 +158,9 @@ export default function ChannelSetupPage({ user }: { user: UserProps }) {
     setAppSecret('');
     setPageAccessToken('');
     setPhoneNumber('');
+    setWaPhoneNumberId('');
+    setWaAccessToken('');
+    setWaAppSecret('');
     setTestResult(null);
   };
 
@@ -166,10 +170,13 @@ export default function ChannelSetupPage({ user }: { user: UserProps }) {
   };
 
   const handleTestConnection = async () => {
-    if (!selectedChannel || !pageAccessToken.trim()) {
+    if (!selectedChannel) return;
+
+    const token = selectedChannel === 'WHATSAPP' ? waAccessToken.trim() : pageAccessToken.trim();
+    if (!token) {
       toast({
         title: 'Missing Token',
-        description: 'Please enter a Page Access Token before testing.',
+        description: 'Please enter an Access Token before testing.',
         variant: 'destructive',
       });
       return;
@@ -177,17 +184,23 @@ export default function ChannelSetupPage({ user }: { user: UserProps }) {
     setTestingToken(true);
     setTestResult(null);
     try {
+      const body: Record<string, string> = { channel: selectedChannel, accessToken: token };
+      if (selectedChannel === 'WHATSAPP' && waPhoneNumberId.trim()) {
+        body.phoneNumberId = waPhoneNumberId.trim();
+      }
       const res = await fetch('/api/channels/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channel: selectedChannel, accessToken: pageAccessToken.trim() }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       setTestResult(data);
       if (data.valid) {
         toast({
           title: 'Token Valid',
-          description: `Connected to ${data.pageName || 'Meta'}${data.instagramAccount ? ' \u2014 Instagram: @' + data.instagramAccount : ''}. You can now save.`,
+          description: selectedChannel === 'WHATSAPP'
+            ? `WhatsApp connected: ${data.displayPhone || data.verifiedName || 'OK'}`
+            : `Connected to ${data.pageName || 'Meta'}${data.instagramAccount ? ' \u2014 Instagram: @' + data.instagramAccount : ''}. You can now save.`,
         });
       } else {
         toast({
@@ -237,16 +250,21 @@ export default function ChannelSetupPage({ user }: { user: UserProps }) {
         metadata = { appId: appId.trim(), linkedFbPage: testResult?.pageName || 'Sports Pavilion RWP', instagramAccount: testResult?.instagramAccount || undefined };
         accessToken = pageAccessToken.trim();
       } else if (selectedChannel === 'WHATSAPP') {
-        if (!phoneNumber.trim()) {
+        if (!waAccessToken.trim() || !waPhoneNumberId.trim()) {
           toast({
-            title: 'Missing Field',
-            description: 'Please enter your WhatsApp Business phone number.',
+            title: 'Missing Fields',
+            description: 'Please enter WhatsApp Access Token and Phone Number ID.',
             variant: 'destructive',
           });
           setConnecting(null);
           return;
         }
-        metadata = { phoneNumber: phoneNumber.trim(), businessName: 'Sports Pavilion RWP' };
+        metadata = {
+          phoneNumberId: waPhoneNumberId.trim(),
+          appSecret: waAppSecret.trim(),
+          businessName: 'Sports Pavilion RWP',
+        };
+        accessToken = waAccessToken.trim();
       }
 
       const res = await fetch('/api/channels', {
@@ -560,21 +578,104 @@ export default function ChannelSetupPage({ user }: { user: UserProps }) {
 
           {selectedChannel === 'WHATSAPP' ? (
             <div className="space-y-4 py-2">
-              <div className="space-y-2">
-                <Label htmlFor="phoneNumber">Business Phone Number</Label>
-                <Input
-                  id="phoneNumber"
-                  placeholder="+92 300 1234567"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                />
+              {/* Credential guide */}
+              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 space-y-2">
+                <div className="flex items-start gap-2">
+                  <Info className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                  <div className="text-xs text-emerald-800 space-y-1">
+                    <p className="font-semibold">Where to find WhatsApp credentials:</p>
+                    <ol className="list-decimal list-inside space-y-0.5 text-emerald-700">
+                      <li>Go to <a href="https://business.facebook.com/settings/whatsapp-business-api" target="_blank" rel="noopener noreferrer" className="underline font-medium hover:text-emerald-900">Meta Business Settings &gt; WhatsApp</a></li>
+                      <li>Under &quot;Phone Numbers&quot;, copy the <strong>Phone Number ID</strong></li>
+                      <li>Generate a <strong>Permanent Access Token</strong> with whatsapp_business_messaging permission</li>
+                      <li>Copy the <strong>App Secret</strong> from your Meta App settings</li>
+                    </ol>
+                  </div>
+                </div>
               </div>
-              <Separator />
-              <div className="bg-muted/50 rounded-lg p-4 text-center space-y-3">
-                <QrCode className="w-16 h-16 mx-auto text-muted-foreground/50" />
-                <p className="text-sm text-muted-foreground">
-                  After submitting, scan the QR code from WhatsApp Business on your phone to complete the connection.
+
+              <div className="space-y-2">
+                <Label htmlFor="waPhoneNumberId">WhatsApp Phone Number ID</Label>
+                <Input
+                  id="waPhoneNumberId"
+                  placeholder="e.g. 123456789012345"
+                  value={waPhoneNumberId}
+                  onChange={(e) => { setWaPhoneNumberId(e.target.value); setTestResult(null); }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Meta Business Settings &gt; WhatsApp &gt; Phone Numbers
                 </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="waAccessToken">WhatsApp Access Token</Label>
+                <Input
+                  id="waAccessToken"
+                  type="password"
+                  placeholder="EAAxxxxx..."
+                  value={waAccessToken}
+                  onChange={(e) => { setWaAccessToken(e.target.value); setTestResult(null); }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Permanent token with whatsapp_business_messaging permission
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="waAppSecret">App Secret</Label>
+                <Input
+                  id="waAppSecret"
+                  type="password"
+                  placeholder="Enter your Meta App Secret"
+                  value={waAppSecret}
+                  onChange={(e) => { setWaAppSecret(e.target.value); }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Used for webhook signature verification. Meta App Dashboard &gt; Settings &gt; Basic
+                </p>
+              </div>
+
+              {/* Test Connection */}
+              <div className="space-y-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={handleTestConnection}
+                  disabled={testingToken || !waAccessToken.trim() || !waPhoneNumberId.trim()}
+                >
+                  {testingToken
+                    ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
+                    : <ShieldCheck className="w-3.5 h-3.5 mr-2" />}
+                  {testingToken ? 'Verifying...' : 'Test Connection'}
+                </Button>
+
+                {testResult && (
+                  <div className={`rounded-lg p-3 ${
+                    testResult.valid
+                      ? 'bg-emerald-50 border border-emerald-200'
+                      : 'bg-red-50 border border-red-200'
+                  }`}>
+                    <div className="flex items-start gap-2">
+                      {testResult.valid
+                        ? <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                        : <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />}
+                      <div className="text-xs">
+                        {testResult.valid ? (
+                          <>
+                            <p className="font-semibold text-emerald-800">
+                              Token valid{(testResult as { displayPhone?: string }).displayPhone ? ' \u2014 ' + (testResult as { displayPhone?: string }).displayPhone : ''}
+                            </p>
+                            <p className="text-emerald-600 mt-0.5">You can now save the connection.</p>
+                          </>
+                        ) : (
+                          <p className="text-red-700 font-medium">{testResult.error || 'Token verification failed.'}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ) : (
@@ -709,18 +810,18 @@ export default function ChannelSetupPage({ user }: { user: UserProps }) {
             </Button>
             <Button
               onClick={handleConnect}
-              disabled={connecting !== null || (selectedChannel !== 'WHATSAPP' && testResult === null)}
+              disabled={connecting !== null}
             >
               {connecting === selectedChannel
                 ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 : <Plug className="w-4 h-4 mr-2" />}
               {connecting === selectedChannel ? 'Connecting...' : 'Connect'}
             </Button>
-            {selectedChannel !== 'WHATSAPP' && testResult === null && (
-              <p className="text-xs text-muted-foreground text-center w-full">
-                Test your token first for a smoother setup
-              </p>
-            )}
+              {testResult === null && (
+                <p className="text-xs text-muted-foreground text-center w-full">
+                  Test your token first for a smoother setup
+                </p>
+              )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -117,6 +117,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ connection }, { status: 200 });
   } catch (error) {
+    console.error('[channels POST] Error:', error);
     if (error instanceof Response) return error;
     return NextResponse.json(
       { error: 'Failed to connect channel' },

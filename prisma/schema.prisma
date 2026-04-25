@@ -71,7 +71,6 @@ model Lead {
   conversations Conversation[]
   followUps    FollowUp[]
   memberships  Membership[]
-  auditLogs    AuditLog[]  @relation("AuditLead")
 
   @@index([phone])
   @@index([status])
@@ -217,8 +216,6 @@ model AuditLog {
   remarks      String?
   ipAddress    String?
   createdAt    DateTime @default(now())
-
-  lead Lead? @relation("AuditLead", fields: [entityId], references: [id])
 
   @@index([actorType])
   @@index([entityType])
