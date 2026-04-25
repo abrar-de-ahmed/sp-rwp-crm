@@ -1,0 +1,145 @@
+# SP RWP CRM - MASTER RESCUE PROMPT
+# Copy and paste EVERYTHING below into a new chat to restore full context.
+# Last updated: April 2025
+
+---
+
+## WHO AM I
+
+My name is Abrar. I own Sales Point Rawalpindi (SPR), a real estate marketing firm in Rawalpindi, Pakistan. I am building a custom CRM system for my company. I am not a developer. I work with AI assistants to build this system. My GitHub username is abrar-de-ahmed.
+
+## WHAT IS THIS PROJECT
+
+SP RWP CRM is a custom-built Customer Relationship Management platform specifically designed for real estate sales operations. It manages leads, customer communications (WhatsApp, Facebook, Instagram, Email), team performance, workflows, and AI-powered customer intelligence.
+
+## GITHUB REPOSITORY
+
+Repository: https://github.com/abrar-de-ahmed/sp-rwp-crm
+Branch: main (private repo)
+Project root: /home/z/my-project/
+
+## TECH STACK
+
+- Framework: Next.js 14 (App Router) + TypeScript
+- Styling: Tailwind CSS + shadcn/ui component library
+- Database: PostgreSQL (SQLite in development mode)
+- ORM: Prisma
+- Authentication: NextAuth.js with JWT sessions
+- AI Model: GLM-4 Plus (via z-ai-web-dev-sdk, free tier)
+- WhatsApp/Meta: Meta Cloud API (FB Messenger + Instagram DM + WhatsApp)
+- Email: Resend (email delivery service)
+- Deployment Target: Cloudflare Pages (frontend) + Neon PostgreSQL (production DB)
+- Everything is 100% free stack - no paid tools except Meta Cloud API (free tier)
+
+## DATABASE SCHEMA (11 tables)
+
+User, Lead, Contact, Deal, Activity, Task, ChannelConnection, AuditLog, Workflow, EmailTemplate, Conversation. Prisma schema file: prisma/schema.prisma
+
+## USER ROLES
+
+- SUPER_ADMIN: Full system access (Abrar)
+- ADMIN: Management access
+- SALES_REP: Sales team access
+
+## CURRENT STATE - WHAT IS BUILT
+
+Phase 1 (Complete): Core CRM - Auth, Users, Leads, Contacts, Deals, Dashboard, basic CRUD
+Phase 2 (Complete): Advanced features - Activities, Tasks, Pipeline, Reports, Export, Settings
+Phase 3 (Built): Meta webhooks, WhatsApp integration, Email automation, Workflow engine, Unified Inbox, AI Self-Learning Engine, AI Dashboard
+
+Current stats: 44+ API routes, 21+ pages, 11 database tables, clean build with no errors.
+
+## RECENT FIXES (IMPORTANT CONTEXT)
+
+1. LOGIN FIX: Seed file had wrong passwords. Admin password is now "admin123". Manager is "admin123". Sales reps are "password123". Seed uses upsert so re-seeding updates existing records. Run: npx prisma db seed
+
+2. WHATSAPP FIX: AuditLog.entityId had a foreign key to Lead.id but was used for ALL entity types (SETTING, CHANNEL, etc). This caused every audit log insert for non-Lead entities to fail with FK constraint violation. Fixed by removing the FK relation - entityId is now a plain String field.
+
+3. WHATSAPP UI: Connection dialog now has 3 fields - Phone Number ID, Access Token, App Secret. Test connection button calls /api/channels/test which verifies tokens via Graph API before saving.
+
+4. DATABASE CORRUPTION: If server is running while running npx prisma migrate reset, the DB gets corrupted. Always kill the server first, then reset, then restart.
+
+## FILES STRUCTURE (KEY PATHS)
+
+- prisma/schema.prisma - Database schema
+- prisma/seed.ts - Database seeding
+- app/(dashboard)/ - All dashboard pages (20+ pages)
+- app/api/ - All API routes (44+ routes)
+- lib/ai/ - AI agents and learning engine
+- lib/prisma.ts - Database client singleton
+- CHAMP.md - Master knowledge file (project root)
+- middleware.ts - Auth protection
+
+## AI SYSTEM
+
+6 CRM AI Agents exist in lib/ai/:
+1. Lead Scoring Agent
+2. Customer Bot Agent (WhatsApp/FB/IG auto-replies)
+3. Call Monitor Agent
+4. Follow-Up Suggest Agent
+5. Reporting Agent
+6. Data Quality Agent
+
+AI Self-Learning Engine (lib/ai/learning-engine.ts):
+- 10 core functions
+- Conversation memory system
+- Pattern extraction from real interactions
+- Response optimization based on what works
+
+## STRATEGIC DIRECTION (CONFIDENTIAL)
+
+1. GLM-4 Plus must become a "monster" - improving daily based on real customer interactions
+2. WhatsApp bot behavior with real customers is the #1 priority
+3. SPR is not Meta-verified yet - using CraftedMinds page for connection testing only
+4. Budget is not an issue once finalized - will ask SPR
+
+## PENDING WORK (IN ORDER)
+
+### Priority 1: Agent Knowledge System (GitHub Files)
+Create multi-file knowledge system on GitHub that persists across chat sessions:
+1. CHAMP.md - Supervisor/entry point (updated/restructured)
+2. ARCHITECTURE.md - Architect Agent (tech decisions, what worked/failed)
+3. CRM_BRAIN.md - Customer Intelligence Agent (learned patterns, FAQs, objection handling, conversion data)
+4. PLAYBOOK.md - Operations Agent (step-by-step procedures)
+5. CLIENT_CONTEXT.md - Domain Expert (SPR-specific data, pricing, facilities, FAQs, business rules)
+6. RAG_PLAYBOOK.md - Onboarding Agent (how to onboard new clients, data ingestion)
+7. EXPERT.md - Expert Agent (senior technical expert, code review, best practices)
+8. QA_EXPERT.md - Higher QA Expert (testing strategy, quality assurance, validation)
+
+### Priority 2: Meta/WhatsApp Connections
+- Prove Phase 3 works with real credentials on CraftedMinds page
+- SPR not verified on Meta yet
+
+### Priority 3: Make CRM AI Smart (Phase 3C)
+- Populate AI with SPR-specific data
+- Train on real customer conversations
+- Build objection handling for Pakistani real estate
+
+### Priority 4: Monster Protocol (Phase 3D)
+- Daily learning from interactions
+- A/B testing for responses
+- Predictive lead scoring
+
+## IMPORTANT RULES FOR THE AI ASSISTANT
+
+1. Always read CHAMP.md first if it exists in the project root - it has full project history
+2. Never push to GitHub without testing changes first
+3. Always backup schema before making Prisma changes
+4. SPR is the real company. CraftedMinds is ONLY for testing connections.
+5. All AI model calls go through z-ai-web-dev-sdk in backend code, NEVER in client-side code
+6. The user prefers direct action over long explanations - execute first, explain after
+7. Keep all files in /home/z/my-project/ - this is the only working directory
+8. Documents and downloads go to /home/z/my-project/download/
+9. Work log goes to /home/z/my-project/worklog.md
+
+## HOW TO START WORK
+
+1. cd /home/z/my-project
+2. Read CHAMP.md for full context
+3. Check current git status: git status
+4. Check if server is running, kill if needed before DB operations
+5. After making changes, test thoroughly before committing
+6. Push to GitHub when ready: git push origin main
+
+---
+END OF RESCUE PROMPT
