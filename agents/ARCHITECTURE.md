@@ -1,163 +1,85 @@
-# ARCHITECT — The Architect Agent | SP RWP CRM
+# ARCHITECT — Technical Architect Agent
 
-> **Role:** Technical Architect — knows every line, every decision, every failure
-> **Updated:** 2026-04-26
-> **Reports to:** CHAMP (Supervisor)
-
-## PURPOSE
-I am the Architect Agent. I hold ALL technical knowledge about this codebase —
-every decision made, every bug found and fixed, every pattern established,
-every anti-pattern discovered. New chat sessions read me to avoid repeating
-mistakes and to build consistently with established patterns.
-
-## ACTIVATION
-When CHAMP activates, it reads ALL agent files. I provide the technical brain.
+> **Role:** You are the Technical Architect. You own every technical decision, pattern, bug fix, file structure, and schema choice. When anyone asks "why was X built this way?" or "how does Y work under the hood?" — you answer.
+>
+> **Last Updated:** 2026-04-27
 
 ---
 
-## 1. TECH STACK (Locked)
+## 1. TECH STACK (Locked Decisions)
 
-| Layer | Technology | Version | Why |
-|-------|-----------|---------|-----|
-| Framework | Next.js (App Router) | 16.1 | Full-stack, modern, Turbopack |
-| Language | TypeScript | 5 | Type safety |
-| React | React | 19 | Latest with Server Components |
-| Styling | Tailwind CSS | 4 | oklch color system, utility-first |
-| UI Library | shadcn/ui | new-york | 43 components installed |
-| Database | SQLite via Prisma | 6.11 | Dev simplicity, migrate to Neon later |
-| Auth | NextAuth.js | v4 | JWT strategy, 24h sessions |
-| AI | z-ai-web-dev-sdk | 0.0.17 | glm-4-plus, free tier |
-| Meta API | Graph API | v19.0 | FB + IG webhooks |
-| WhatsApp | Cloud API via Meta | v19.0 | 3-tier AI response |
-| Email | Resend | REST API | 7 templates, no npm package |
-| Charts | Recharts | latest | Dashboard visualizations |
-| DnD | @dnd-kit | latest | Kanban board |
-| Icons | lucide-react | latest | Consistent icon set |
-| Forms | react-hook-form + zod | latest | Validation |
-| State | React useState | built-in | SPA pattern within CRMLayout |
+| Layer | Technology | Why |
+|-------|-----------|-----|
+| Framework | Next.js 16.1 (App Router) | Modern, full-stack, App Router is the standard |
+| Language | TypeScript 5 | Type safety across 44+ API routes |
+| React | React 19 | Latest stable, concurrent features |
+| Styling | Tailwind CSS 4 + oklch color system | oklch = perceptually uniform colors, better than hex/hsl |
+| UI Library | shadcn/ui (new-york style, 43 components) | Not a dependency — copy-paste components, full ownership |
+| Database | SQLite via Prisma ORM 6.11 (file: db/custom.db) | Zero-config for dev, Prisma gives type-safe queries |
+| Auth | NextAuth.js v4 (JWT strategy, 24h sessions) | Stateless, scalable, no DB sessions table needed |
+| AI | z-ai-web-dev-sdk (glm-4-plus, free tier) | Free LLM, good enough for MVP, switch to paid later |
+| Meta API | Meta Graph API v19.0 | Facebook + Instagram integration via webhooks |
+| WhatsApp | WhatsApp Cloud API via Meta Business | Free 1000 conversations/month |
+| Email | Resend API (REST, no npm package) | Direct fetch() calls, no package bloat |
+| Charts | Recharts | React-native charting, composable |
+| Drag & Drop | @dnd-kit/core + @dnd-kit/sortable | Pipeline Kanban drag-and-drop |
+| Icons | lucide-react | Consistent icon set |
+| Forms | react-hook-form + @hookform/resolvers + zod | Validated forms everywhere |
+| State | React useState (SPA pattern) | Simple, no Redux needed |
+| Package Manager | Bun | Faster than npm |
+| Fonts | Geist Sans + Geist Mono (next/font/google) | Clean, modern, optimized loading |
+| Date | date-fns | Lightweight date manipulation |
 
-### NEVER Change These Unless:
-- User explicitly requests it
-- Current library is abandoned/broken
-- Migration is planned and documented in CHAMP.md
+### Theme
+- Primary hue: 155 (emerald/teal green) — sports/fitness branding
+- Color system: oklch (perceptually uniform, no more "why does this blue look different?")
+- Dark mode: class strategy (`dark:` prefix in Tailwind)
+- Logo: Trophy icon with emerald background
+
+### Cost Stack
+| Service | Cost | Limit |
+|---------|------|-------|
+| Cloudflare Pages | FREE | Unlimited static |
+| Neon PostgreSQL | FREE | 0.5 GB |
+| Meta WhatsApp | FREE | 1000 convos/month |
+| Resend Email | FREE | 3000/month |
+| GLM-4 Plus | FREE | Generous free tier |
+| Cloudflare Workers | FREE | 100k requests/day |
 
 ---
 
-## 2. ARCHITECTURE PATTERNS (Established)
+## 2. CRITICAL ARCHITECTURE: SPA Pattern
 
-### SPA Pattern (NOT file-based routing)
-```
-src/app/page.tsx → AuthGate → Login or CRMLayout
-CRMLayout uses useState<PageId> to render page components
-All pages are in src/components/[name]-page.tsx
-```
-**Why:** Single layout, no page reloads, smoother UX, easier state management.
+**THIS IS THE MOST IMPORTANT THING TO UNDERSTAND.**
 
-### Page Registration (5-step mandatory process)
-1. Create component: `src/components/[name]-page.tsx`
+This is a **Single Page Application** inside Next.js. All CRM pages are components, NOT file-system routes.
+
+```
+src/app/page.tsx → Entry point
+  ├── If NOT logged in → Shows <Login /> component
+  └── If logged in → Shows <CRMLayout /> component
+                        ├── Sidebar (navigation)
+                        ├── Header (search, notifications, user menu)
+                        └── Main Content Area
+                            └── Uses useState<PageId> to render components
+                                ├── dashboard → <Dashboard />
+                                ├── leads → <LeadsPage />
+                                ├── pipeline → <PipelinePage />
+                                └── ... all 21 pages
+```
+
+### Page Registration Protocol (5 Steps — NEVER skip)
+1. Create component in `src/components/[name]-page.tsx`
 2. Add to `PageId` type in `src/components/sidebar.tsx`
-3. Add to menu arrays in `src/components/sidebar.tsx` (per role)
+3. Add to menu arrays in `src/components/sidebar.tsx` (by role)
 4. Add to switch statement in `src/components/crm-layout.tsx`
 5. Add to `pageTitles` in `src/components/sidebar.tsx`
 
-**Common mistake:** Forgetting step 5 — page has no title in sidebar.
-
-### API Route Pattern
-```typescript
-// Every route follows this structure:
-import { requireAuth, requireRole } from '@/lib/auth-helpers';
-
-export async function GET/POST/PUT/DELETE(request: NextRequest) {
-  try {
-    const session = await requireAuth(); // or requireRole('SUPER_ADMIN')
-    // ... business logic
-    return NextResponse.json({ data });
-  } catch (error) {
-    if (error instanceof Response) return error;
-    console.error('[route-name] Error:', error);
-    return NextResponse.json({ error: 'Description' }, { status: 500 });
-  }
-}
-```
-
-### AI Call Pattern (Single entry point)
-ALL AI calls go through ONE function: `callLLM()` in `src/lib/ai-agent.ts`
-- Model: glm-4-plus
-- Parameters: prompt, systemPrompt, options (temperature, maxTokens, learningContext)
-- The learning context is automatically injected from approved AILearning records
-- NEVER call the AI SDK directly from route handlers — always use callLLM()
-
-### 3-Tier AI Response Pattern (Webhooks)
-```
-Incoming Message
-  → shouldHandoffToHuman()? → YES: Handoff + notify rep
-  → matchFAQ()?              → YES: Send FAQ answer
-  → callLLM()                → NO: LLM generates contextual response
-  → recordAIConversation()    → Non-blocking (.catch(() => {}))
-```
-**Critical:** AI recording is ALWAYS non-blocking. Never let learning crash the main flow.
+**If you add a page without doing all 5 steps, it won't appear in the app.**
 
 ---
 
-## 3. DATABASE DESIGN (11 Tables)
-
-### Critical Design Decisions:
-- **AuditLog has NO foreign key** on entityId — it's used for all entity types (Lead, User, Setting, Channel, etc.). Originally had FK to Lead.id which caused crashes.
-- **Soft delete for leads** — never hard delete, set status to LOST
-- **JSON strings for arrays** — interestedFacilities, tags, etc. stored as JSON strings (SQLite limitation), parsed with JSON.parse()
-- **CUID for IDs** — all primary keys use cuid() generation
-
-### Table Relationships:
-```
-User → assignedLeads (Lead[])
-User → calls (Call[])
-User → followUpsAssigned (FollowUp[])
-User → followUpsEscalated (FollowUp[])
-Lead → calls (Call[])
-Lead → conversations (Conversation[])
-Lead → followUps (FollowUp[])
-Lead → memberships (Membership[])
-ChannelConnection — standalone (no FK)
-AILearning — standalone (no FK)
-AIInsight — reviewedBy → User
-```
-
-### Migration Path (Future):
-- SQLite → Neon PostgreSQL
-- Change `provider = "sqlite"` to `provider = "postgresql"` in schema.prisma
-- JSON string fields can become actual JSON columns
-- Update DATABASE_URL in .env
-
----
-
-## 4. KNOWN BUGS & FIXES (Learned The Hard Way)
-
-### Session 6 Bugs:
-| Bug | Root Cause | Fix |
-|-----|-----------|-----|
-| Login "Invalid password" | Seed script used `password123` for ALL users including admin | Split passwords: admin/manager=`admin123`, reps=`password123`. Also changed upsert to update passwords on re-seed (was `update: {}` before) |
-| Channel connection "Failed to connect" (500) | AuditLog.entityId had FK to Lead.id. When logging non-Lead entities (SETTING, CHANNEL), FK violated | Removed FK constraint: `lead Lead? @relation(...)` from AuditLog model and `auditLogs @relation(...)` from Lead model |
-| Missing /api/channels/test route | Route was never created, frontend 404'd | Created full test route with Meta token verification (Graph API /me/accounts) and WhatsApp token verification (phone number endpoint) |
-| WhatsApp dialog only asked for phone number | UI was too simple — needed Phone Number ID + Access Token + App Secret | Rebuilt dialog with 3 fields, guide, and test connection button |
-
-### Session 4-5 Bugs:
-| Bug | Root Cause | Fix |
-|-----|-----------|-----|
-| `await` in non-async | ai-agents-page.tsx used await in Promise callback | Wrapped in async IIFE + Promise.all |
-| RBAC gaps | 5 pages missing role checks | Added requireRole() guards |
-| Call recordings not saving | Missing fetch call in component | Added API call |
-| React Fragment key warnings | Array rendering without keys | Added unique keys |
-
-### Patterns That Cause Bugs:
-1. **Forgetting to register pages** — always follow 5-step process
-2. **AuditLog with non-Lead entityId** — entityId has NO FK constraint, any ID is valid
-3. **Re-seed not updating existing data** — always use `update: { ... }` in upsert, never `update: {}`
-4. **Server restart during DB operations** — kills SQLite, corrupts database
-5. **Missing error logging** — always include `console.error('[route-name] Error:', error)` in catch blocks
-
----
-
-## 5. FILE STRUCTURE MAP
+## 3. COMPLETE FILE MAP
 
 ```
 src/
@@ -165,114 +87,436 @@ src/
 │   ├── page.tsx                    # Entry: AuthGate → Login or CRMLayout
 │   ├── layout.tsx                  # Root layout: fonts, Toaster
 │   ├── globals.css                 # Tailwind + oklch theme variables
-│   └── api/                        # 45 API routes (see CHAMP.md Section 5)
-│       ├── auth/[...nextauth]/     # NextAuth handler
-│       ├── leads/                  # CRUD + status + remarks
-│       ├── users/                  # CRUD
-│       ├── followups/              # CRUD + status transitions
-│       ├── calls/                  # List only
-│       ├── conversations/          # Unified inbox
-│       ├── channels/               # Channel CRUD + test
-│       ├── notifications/          # Read + mark read
-│       ├── ai/                     # 6 AI endpoints + 7 learning endpoints
-│       ├── webhooks/               # meta + whatsapp receivers
-│       ├── messaging/              # Send + WhatsApp sessions
-│       ├── email/                  # Send + templates
-│       ├── workflows/              # Manage + check
-│       └── [dashboard,pipeline,import,audit,team]/
+│   └── api/                        # 44 API route files
+│       ├── leads/
+│       │   ├── route.ts            # GET (list), POST (create + workflow trigger)
+│       │   └── [id]/
+│       │       ├── route.ts        # GET, PUT, DELETE (soft delete, SA only)
+│       │       ├── status/route.ts # PUT (status change + auto-temp + workflow)
+│       │       └── remarks/route.ts # POST (append timestamped remark)
+│       ├── users/
+│       │   ├── route.ts            # GET, POST (SA only)
+│       │   └── [id]/route.ts       # GET, PUT, DELETE (SA only)
+│       ├── followups/
+│       │   ├── route.ts            # GET, POST
+│       │   └── [id]/route.ts       # PUT (status transition, reschedule)
+│       ├── calls/route.ts          # GET
+│       ├── notifications/
+│       │   ├── route.ts            # GET (list + unread count)
+│       │   ├── [id]/read/route.ts  # POST
+│       │   └── read-all/route.ts   # POST
+│       ├── audit/route.ts          # GET (ADMIN+)
+│       ├── pipeline/route.ts       # GET (Kanban data)
+│       ├── import/route.ts         # GET, POST (SA only)
+│       ├── team-members/route.ts   # GET (ADMIN+)
+│       ├── channels/
+│       │   ├── route.ts            # GET, POST, DELETE
+│       │   └── test/route.ts       # POST (SA only)
+│       ├── ai-agents/route.ts      # GET, PUT
+│       ├── dashboard/
+│       │   ├── stats/route.ts      # GET (KPIs)
+│       │   ├── hot-leads/route.ts  # GET
+│       │   └── followups/route.ts  # GET
+│       ├── ai/
+│       │   ├── score-lead/route.ts     # POST
+│       │   ├── chat/route.ts           # POST (customer bot)
+│       │   ├── insights/route.ts       # GET, PUT
+│       │   ├── followup-suggest/route.ts # POST
+│       │   ├── report/route.ts         # POST
+│       │   ├── data-quality/route.ts   # POST (ADMIN+)
+│       │   ├── call-analysis/route.ts  # POST
+│       │   ├── learning/
+│       │   │   ├── stats/route.ts      # GET (ADMIN+)
+│       │   │   ├── patterns/route.ts   # GET (ADMIN+)
+│       │   │   ├── feedback/route.ts   # POST
+│       │   │   ├── analyze/route.ts    # POST (ADMIN+)
+│       │   │   ├── suggest/route.ts    # POST
+│       │   │   ├── faqs/route.ts       # GET, PUT (ADMIN+)
+│       │   │   └── [id]/route.ts       # GET, PUT (ADMIN+)
+│       ├── webhooks/
+│       │   ├── meta/route.ts           # GET (verify), POST (receive)
+│       │   └── whatsapp/route.ts       # GET (verify), POST (receive)
+│       ├── conversations/
+│       │   ├── route.ts                # GET
+│       │   └── [leadId]/route.ts       # GET
+│       ├── messaging/
+│       │   ├── send/route.ts           # POST (Rep+)
+│       │   └── whatsapp/sessions/route.ts # GET, POST
+│       ├── email/
+│       │   ├── send/route.ts           # POST (ADMIN+)
+│       │   └── templates/route.ts      # GET (SA only)
+│       └── workflows/
+│           ├── route.ts                # GET, PUT (SA only)
+│           └── check/route.ts          # POST (ADMIN+)
 ├── components/
-│   ├── crm-layout.tsx              # SPA layout + page router (switch)
-│   ├── sidebar.tsx                 # Role-based nav + PageId type + pageTitles
-│   ├── header.tsx                  # Search, notifications, user menu
-│   ├── [21 page components].tsx
-│   ├── [dialog components].tsx
-│   ├── login.tsx
+│   ├── crm-layout.tsx              # SPA layout: sidebar + header + page router
+│   ├── sidebar.tsx                 # Role-based navigation (21 pages total)
+│   ├── header.tsx                  # Top bar: search, notifications, user menu
+│   ├── dashboard.tsx               # KPI cards, hot leads, follow-ups
+│   ├── leads-page.tsx              # Paginated table, search/filter
+│   ├── lead-detail.tsx             # Inline detail with tabs
+│   ├── pipeline-page.tsx           # Kanban board (6 columns)
+│   ├── followups-page.tsx          # Follow-up list
+│   ├── call-history-page.tsx       # Call table
+│   ├── call-recordings-page.tsx    # Recordings with AI analysis
+│   ├── team-page.tsx               # Team overview
+│   ├── team-management-page.tsx    # User CRUD
+│   ├── memberships-page.tsx        # Membership management
+│   ├── reports-page.tsx            # AI-generated reports
+│   ├── ai-agents-page.tsx          # 6 AI agents config
+│   ├── ai-insights-page.tsx        # AI insights review
+│   ├── channel-setup-page.tsx      # FB/IG/WhatsApp channels
+│   ├── data-import-page.tsx        # CSV/XLSX import
+│   ├── data-export-page.tsx        # Data export
+│   ├── audit-log-page.tsx          # Audit log viewer
+│   ├── settings-page.tsx           # System settings
+│   ├── help-page.tsx               # FAQ + onboarding
+│   ├── ai-learning-page.tsx        # AI learning dashboard
+│   ├── unified-inbox-page.tsx      # 3-column messaging UI
+│   ├── login.tsx                   # Login form
+│   ├── notification-dropdown.tsx   # Bell icon dropdown
+│   ├── onboarding-tour.tsx         # First-time user tour
+│   ├── create-lead-dialog.tsx      # Lead creation form
+│   ├── create-follow-up-dialog.tsx # Follow-up creation
+│   ├── create-user-dialog.tsx      # User creation
 │   └── ui/                         # 43 shadcn/ui components
 ├── lib/
-│   ├── db.ts                       # Prisma singleton
-│   ├── auth.ts                     # NextAuth config
-│   ├── auth-helpers.ts             # RBAC helpers
-│   ├── audit.ts                    # Audit log writer
-│   ├── ai-agent.ts                 # 6 agents + callLLM() + FAQ + scoring
-│   ├── ai-learning.ts              # 10 learning functions
-│   ├── meta.ts                     # Meta API client
-│   ├── whatsapp.ts                 # WhatsApp API client
-│   ├── email.ts                    # Resend client + 7 templates
-│   ├── workflow-engine.ts          # 8 workflow types
-│   ├── webhook-verify.ts           # HMAC-SHA256 verification
+│   ├── db.ts                       # Prisma singleton (globalThis pattern)
+│   ├── auth.ts                     # NextAuth config (JWT, credentials)
+│   ├── auth-helpers.ts             # RBAC: requireAuth, requireRole
+│   ├── audit.ts                    # createAuditLog() writer
+│   ├── ai-agent.ts                 # 6 AI agents + FAQ + lead scoring + learning
+│   ├── ai-learning.ts              # Self-learning engine (10 functions)
+│   ├── meta.ts                     # Meta Graph API client
+│   ├── whatsapp.ts                 # WhatsApp Cloud API client
+│   ├── email.ts                    # Resend email client (7 templates)
+│   ├── workflow-engine.ts          # Workflow automation (8 workflows)
+│   ├── webhook-verify.ts           # HMAC-SHA256 webhook verification
 │   └── utils.ts                    # cn() utility
-agents/
-├── CHAMP.md                        # Supervisor — entry point
-├── ARCHITECTURE.md                 # THIS FILE — technical brain
-├── CRM_BRAIN.md                    # Customer intelligence
-├── PLAYBOOK.md                     # Operations procedures
-├── CLIENT_CONTEXT.md               # Client-specific data
-├── RAG_PLAYBOOK.md                 # Client onboarding
-├── QA_EXPERT.md                    # Quality assurance
-└── EXPERT.md                       # Senior technical expert
+├── hooks/
+│   ├── use-toast.ts                # Toast notifications
+│   └── use-mobile.ts               # Mobile detection
+prisma/
+├── schema.prisma                   # 11 tables
+└── seed.ts                         # 7 users, 5 leads, audit logs
 ```
 
 ---
 
-## 6. ENVIRONMENT & DEPLOYMENT
+## 4. DATABASE SCHEMA (11 Tables — Every Field)
 
-### Dev Environment:
-- Port: 3000
-- Database: SQLite at `db/custom.db`
-- Runtime: Bun (not npm)
-- User timezone: Asia/Karachi
-
-### Required .env variables:
+### User
 ```
-DATABASE_URL=file:/home/z/my-project/db/custom.db
-NEXTAUTH_SECRET=sp-rwp-crm-secret-key-2024
-NEXTAUTH_URL=http://localhost:3000
-```
-
-### Channel .env variables (when connecting):
-```
-META_APP_ID=
-META_APP_SECRET=
-FB_PAGE_ACCESS_TOKEN=
-WA_PHONE_NUMBER_ID=
-WA_ACCESS_TOKEN=
-WHATSAPP_APP_SECRET=
-RESEND_API_KEY=
+id           String   @id @default(cuid())
+name         String
+email        String   @unique
+phone        String?
+passwordHash String
+role         Role     @default(SALES_REP)   // SUPER_ADMIN | ADMIN | SALES_REP
+avatarUrl    String?
+isActive     Boolean  @default(true)
+lastLogin    DateTime?
+createdAt    DateTime @default(now())
+updatedAt    DateTime @updatedAt
 ```
 
-### Production Migration Checklist:
-- [ ] SQLite → Neon PostgreSQL (change provider in schema.prisma)
-- [ ] Add `output: 'standalone'` to next.config.js for Cloudflare
-- [ ] Set NEXTAUTH_URL to production domain
-- [ ] Set NEXTAUTH_SECRET to a strong random value
-- [ ] Configure CORS for webhook URLs
-- [ ] Enable Cloudflare SSL
-- [ ] Set up GitHub Actions CI/CD
+### Lead
+```
+id                    String    @id @default(cuid())
+firstName             String
+lastName              String
+phone                 String
+email                 String?
+whatsappNumber        String?
+source                LeadSource @default(MANUAL_IMPORT)
+leadType              LeadType   @default(MEMBERSHIP)
+interestedFacilities  Json       @default("[]")
+leadScore             Int        @default(0)       // 0-100
+temperature           Temperature @default(COLD)   // HOT | WARM | COLD
+status                LeadStatus @default(NEW)     // NEW | CONTACTED | INTERESTED | NEGOTIATION | BOOKED | LOST | RECOVERED
+assignedRepId         String?
+familySize            Int?
+budgetRange           BudgetRange?
+lostReason            String?
+metaAdCampaign        String?
+metaAdCreative        String?
+remarks               Json       @default("[]")    // Array of {text, timestamp, author}
+tags                  Json       @default("[]")
+createdAt             DateTime   @default(now())
+updatedAt             DateTime   @updatedAt
+```
+
+### Call
+```
+id                     String    @id @default(cuid())
+leadId                 String
+repId                  String
+direction              CallDirection  // INBOUND | OUTBOUND
+callTimestamp          DateTime
+durationSeconds        Int?
+status                 CallStatus     // SCHEDULED | COMPLETED | MISSED | NO_ANSWER | BUSY | FAILED
+outcome                String?
+recordingUrl           String?
+transcriptText         String?
+aiSummary              String?
+aiExtractedInterest    Json?
+aiExtractedBudget      String?
+aiExtractedObjections  Json?
+aiExtractedTimeline    String?
+aiSentiment            String?        // POSITIVE | NEGATIVE | NEUTRAL
+aiCoachingFlag         Boolean?
+aiCoachingNote         String?
+repRemarks             String?
+createdAt              DateTime  @default(now())
+```
+
+### Conversation (Unified Inbox)
+```
+id           String       @id @default(cuid())
+leadId       String
+channel      Channel      // WHATSAPP | INSTAGRAM | FACEBOOK | SMS
+direction    Direction    // INBOUND | OUTBOUND
+messageText  String
+mediaUrl     String?
+sentBy       String?      // "AI_AGENT" | rep name
+senderId     String?
+aiAgentId    String?
+isRead       Boolean      @default(false)
+timestamp    DateTime     @default(now())
+```
+
+### FollowUp
+```
+id               String       @id @default(cuid())
+leadId           String
+assignedToId     String
+dueDatetime      DateTime
+priority         FollowUpPriority  // URGENT | HIGH | NORMAL | LOW
+status           FollowUpStatus    // PENDING | COMPLETED | MISSED | ESCALATED
+reason           String?
+lastCallSummary  String?
+reminderSentAt   DateTime?
+reminderSentVia  String?
+escalatedToId    String?
+escalatedAt      DateTime?
+completedAt      DateTime?
+completionNotes  String?
+```
+
+### Membership
+```
+id                    String        @id @default(cuid())
+leadId                String
+repId                 String
+planType              MembershipPlan  // ANNUAL | BI_ANNUAL | MONTHLY_INSTALLMENT | CORPORATE
+planName              String
+startDate             DateTime
+endDate               DateTime
+familyMembersCount    Int?
+familyMemberNames     Json?
+status                MembershipStatus  // ACTIVE | EXPIRING | EXPIRED | RENEWED | CANCELLED
+renewalReminderSent   Boolean      @default(false)
+renewalReminderSentAt DateTime?
+renewalDate           DateTime?
+amountPaid            Float?
+paymentMethod         String?
+```
+
+### AuditLog (Immutable — NO DELETES)
+```
+id          String     @id @default(cuid())
+actorType   AuditActor // SUPER_ADMIN | ADMIN | SALES_REP | AI_AGENT | SYSTEM
+actorId     String
+actorName   String
+entityType  String     // "Lead", "User", "FollowUp", etc.
+entityId    String     // PLAIN STRING — NO FK constraint (intentional)
+action      String     // "CREATE", "UPDATE", "DELETE", "STATUS_CHANGE"
+fieldChanged String?
+oldValue    String?
+newValue    String?
+remarks     String?
+ipAddress   String?
+createdAt   DateTime   @default(now())
+```
+
+**CRITICAL:** `entityId` is a plain String, NOT a foreign key to any table. This was intentionally changed in Session 6 because FK to Lead.id caused 500 crashes when auditing non-Lead entities (channels, users, etc.).
+
+### Notification
+```
+id        String       @id @default(cuid())
+userId    String
+type      NotificationType  // NEW_LEAD | FOLLOW_UP_REMINDER | ESCALATION | CALL_OUTCOME | SYSTEM_ALERT | AI_INSIGHT
+title     String
+message   String
+link      String?
+isRead    Boolean      @default(false)
+sentVia   String       // "IN_APP" | "WHATSAPP" | "BOTH"
+createdAt DateTime     @default(now())
+```
+
+### AIInsight
+```
+id               String          @id @default(cuid())
+agentId          String
+insightType      AIInsightType   // PATTERN | SUGGESTION | COACHING | IMPROVEMENT
+description      String
+dataPoints       Json?
+confidenceScore  Float?
+proposedChange   String?
+expectedImpact   String?
+status           AIInsightStatus // PENDING_REVIEW | APPROVED | REJECTED | DEPLOYED
+reviewedById     String?
+reviewedAt       DateTime?
+reviewNotes      String?
+createdAt        DateTime        @default(now())
+updatedAt        DateTime        @updatedAt
+```
+
+### ChannelConnection
+```
+id              String   @id @default(cuid())
+channel         Channel  // FACEBOOK | INSTAGRAM | WHATSAPP
+status          String   // "CONNECTED" | "DISCONNECTED" | "PENDING"
+connectedAt     DateTime?
+lastHeartbeatAt DateTime?
+accessToken     String?
+sessionData     Json?
+metadata        Json?
+createdAt       DateTime @default(now())
+updatedAt       DateTime @updatedAt
+```
+
+### AILearning (Self-Improvement)
+```
+id             String          @id @default(cuid())
+type           AILearningType  // FAQ_CANDIDATE | RESPONSE_FEEDBACK | PATTERN_DISCOVERED | CONVERSATION_OUTCOME | KNOWLEDGE_UPDATE
+category       String          // question_answer | objection_handling | pricing_response | facility_info | booking_flow | sentiment_pattern | conversion_strategy
+input          String
+output         String
+context        Json?
+feedback       String?         // "positive" | "negative" | "neutral"
+confidence     Float           @default(0.0)   // 0.0 - 1.0
+frequency      Int             @default(1)
+sourceAgent    String?
+leadId         String?
+channel        String?
+language       String?
+status         AILearningStatus  // PENDING_REVIEW | APPROVED | REJECTED | AUTO_APPROVED | DEPLOYED
+reviewedById   String?
+reviewedAt     DateTime?
+reviewNotes    String?
+deployedAt     DateTime?
+createdAt      DateTime        @default(now())
+updatedAt      DateTime        @updatedAt
+```
 
 ---
 
-## 7. PERFORMANCE NOTES
+## 5. DECISION LOG (Why things are the way they are)
 
-- **AILearning context is cached 5 minutes** in-memory — avoids DB hits on every AI call
-- **Prisma uses globalThis singleton** — prevents connection pool exhaustion in dev
-- **Webhook responses are non-blocking** — AI recording uses `.catch(() => {})`
-- **NextAuth uses JWT** — no DB session lookups, stateless
-- **SPA pattern** — no full page reloads, only component swaps
+| Date | Decision | Reason | Made By |
+|------|----------|--------|---------|
+| S1 | Next.js 14+ App Router | Modern, full-stack capable | AI |
+| S1 | SQLite via Prisma (not PostgreSQL) | Simpler setup, no external DB for dev | AI |
+| S1 | SPA pattern inside Next.js | Single layout, easier state management | AI |
+| S1 | 3 roles (not 4+) | Simpler RBAC, covers all use cases | User + AI |
+| S1 | NextAuth JWT strategy | Stateless, scalable | AI |
+| S2 | shadcn/ui new-york style | Modern, consistent design | AI |
+| S2 | Emerald/teal primary color | Sports/fitness branding | AI |
+| S2 | Round-robin lead assignment | Fair distribution among reps | AI |
+| S2 | Soft delete for leads | Data preservation, recoverable | AI |
+| S3 | Fixed NEXTAUTH_SECRET | Login was failing silently | AI |
+| S3 | .env.example in repo | Security template for new devs | AI |
+| S4 | GitHub private repo | Code safety, version control | User |
+| S4 | Cloudflare (not Vercel) | User's Vercel is 90% full | User |
+| S4 | Zero-cost stack | No spending until revenue | User + AI |
+| S5 | Switch gpt-4o-mini → glm-4-plus | Free tier, upgrade when revenue | User |
+| S5 | AI Self-Learning Engine | System gets smarter from conversations | User + AI |
+| S5 | Auto-approve learnings at high confidence | Reduce manual review burden | AI |
+| S5 | 3-tier AI response: FAQ → Learned → LLM | Cost optimization + learning injection | AI |
+| S6 | AuditLog entityId = plain String (no FK) | FK to Lead.id caused crashes for non-Lead entities | AI |
+| S6 | WhatsApp fields: Phone Number ID + Token + Secret | Meta API needs all 3, not just phone | AI |
 
 ---
 
-## 8. CODE STYLE RULES
+## 6. BUG TRACKER (What broke and why)
 
-1. **Imports:** Always use `@/lib/...` alias, never relative paths for lib files
-2. **Error handling:** Every API route has try/catch with console.error and meaningful error messages
-3. **TypeScript:** No `any` types in production code. Use proper interfaces.
-4. **Naming:** kebab-case for files, PascalCase for components, camelCase for functions
-5. **Comments:** Section separators with `// ────` dividers in lib files
-6. **RBAC:** Always check roles at the TOP of route handlers before any business logic
-7. **Audit:** Every write operation (create, update, delete) must create an audit log entry
-8. **AI calls:** NEVER call z-ai-web-dev-sdk directly — always use `callLLM()` from ai-agent.ts
+| Date | Bug | Root Cause | Fix | Status |
+|------|-----|-----------|-----|--------|
+| S2 | `await` in non-async function | ai-agents-page.tsx used await in Promise callback | Wrapped in async IIFE + Promise.all | FIXED |
+| S2 | RBAC not enforced on some pages | Pages didn't check roles | Added requireRole() checks | FIXED |
+| S3 | Login failure — silent | NEXTAUTH_SECRET missing from .env | Added NEXTAUTH_SECRET to .env | FIXED |
+| S3 | .env.example gitignored | .gitignore had `.env*` pattern | Changed to explicit exclusions | FIXED |
+| S4 | TypeScript errors in ai-agents-page.tsx | Type mismatches | Fixed types, added proper interfaces | FIXED |
+| S4 | 5 pages missing RBAC guards | Pages rendered for unauthorized roles | Added Access Denied for unauthorized | FIXED |
+| S4 | Call recordings remarks not saving | Missing fetch call after submit | Added API call | FIXED |
+| S4 | React Fragment key warnings | Missing keys in mapped fragments | Added proper keys | FIXED |
+| S4 | Memberships export wrong API | Using leads API instead of memberships | Fixed to extract from leads with memberships | FIXED |
+| S6 | Login password mismatch | Seed had wrong password for admin | Fixed admin to `admin123` | FIXED |
+| S6 | Channel connection 500 errors | AuditLog FK constraint on entityId | Removed FK, made entityId plain String | FIXED |
+| S6 | WhatsApp connect incomplete | Only had phone field, needed 3 fields | Rebuilt UI with Phone Number ID, Token, Secret | FIXED |
 
 ---
 
-*ARCHITECT is maintained by the AI assistant. Updated after every technical change.*
-*Last full audit: Session 6 (2026-04-26)*
+## 7. KEY PATTERNS & CONVENTIONS
+
+### API Route Pattern
+```typescript
+import { requireAuth } from '@/lib/auth-helpers';
+import { requireRole } from '@/lib/auth-helpers';
+import { createAuditLog } from '@/lib/audit';
+
+export async function GET(req: Request) {
+  const session = await requireAuth();
+  // Role check if needed
+  if (session.user.role !== 'SUPER_ADMIN') {
+    return requireRole(session, ['ADMIN', 'SUPER_ADMIN']);
+  }
+  // ... business logic
+  return Response.json(data);
+}
+```
+
+### Prisma Singleton Pattern (db.ts)
+```typescript
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+export const prisma = globalForPrisma.prisma || new PrismaClient();
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+```
+
+### AI Agent Pattern
+All AI agents use z-ai-web-dev-sdk with glm-4-plus:
+```typescript
+import ZAI from 'z-ai-web-dev-sdk';
+const zai = await ZAI.create();
+const completion = await zai.chat.completions.create({
+  messages: [...],
+  temperature: 0.3,  // varies by agent
+});
+```
+
+### Webhook Verification
+```typescript
+import { verifyWebhookSignature } from '@/lib/webhook-verify';
+// HMAC-SHA256 verification for Meta webhooks
+```
+
+### 3-Tier AI Response (WhatsApp/Customer Bot)
+1. **FAQ Match** — Exact/similar match from approved FAQs (instant, free)
+2. **Learned Response** — From AILearning table with high confidence (fast, free)
+3. **LLM Fallback** — Full GLM-4 Plus call (slower, costs tokens)
+
+---
+
+## 8. WHAT WE'D DO DIFFERENTLY NEXT TIME
+
+| What | Why | Better Approach |
+|------|-----|----------------|
+| SPA pattern | Hard to deep-link, no URL routing | Consider file-based routing for large apps |
+| SQLite in dev | Doesn't support concurrent writes well | Start with PostgreSQL even in dev |
+| Single CHAMP.md | Got too big (730 lines) | Agent files from day 1 |
+| Manual RBAC guards | Easy to forget on new pages | Middleware-based auth |
+
+---
+
+*Architect maintains this file. Updated after every significant technical decision or bug fix.*

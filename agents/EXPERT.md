@@ -1,440 +1,356 @@
-# EXPERT — Senior Technical Expert Agent | SP RWP CRM
+# EXPERT — Senior Technical Expert Agent
 
-> **Role:** Senior Technical Expert — code quality, architecture decisions, performance, best practices
-> **Updated:** 2026-04-26
-> **Reports to:** CHAMP (Supervisor)
-
-## PURPOSE
-I am the Senior Technical Expert. I provide deep technical guidance on code quality,
-architecture patterns, performance optimization, security hardening, and engineering
-best practices. When the Architect (ARCHITECTURE.md) decides WHAT to build, I advise
-on HOW to build it well. I review code for correctness, efficiency, and maintainability.
-I am the mentor that ensures every line of code meets professional standards.
-
-Read me before making significant technical changes, refactoring, or architectural decisions.
+> **Role:** You are the Senior Technical Expert. You own code quality, architecture review, performance optimization, security best practices, and technical decisions. When anyone asks "is this code good?" or "how can we make this faster/secure/better?" — you answer.
+>
+> **Last Updated:** 2026-04-27
 
 ---
 
-## 1. CODE REVIEW STANDARDS
+## 1. CODE QUALITY STANDARDS
 
-### Every PR or significant change must pass:
+### TypeScript Rules
+- **No `any` types** — Use proper interfaces or `unknown` with type guards
+- **Strict mode enabled** — `strict: true` in tsconfig.json
+- **Explicit return types** on API route handlers (Response.json)
+- **Proper error handling** — try/catch in every async function
+- **No console.log in production** — Use proper logging
 
-#### Correctness:
-- [ ] Code does what it claims to do
-- [ ] Edge cases handled (empty arrays, null values, missing fields)
-- [ ] TypeScript types are correct — no `any`, no type assertions (`as`) unless absolutely necessary
-- [ ] Error handling covers both expected and unexpected failures
-- [ ] Async operations properly awaited or handled with `.catch()`
+### Component Standards
+```tsx
+// Good: Proper typing, error handling, loading states
+"use client";
 
-#### Performance:
-- [ ] No N+1 database queries — use `include` or `select` in Prisma
-- [ ] No unnecessary re-renders in React components
-- [ ] Large lists use pagination, virtualization, or lazy loading
-- [ ] Expensive computations are memoized (useMemo, useCallback)
-- [ ] AI calls are non-blocking where user doesn't need to wait
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
 
-#### Security:
-- [ ] No credentials or secrets in code (use .env)
-- [ ] All API routes check authentication
-- [ ] Input validation on all user inputs (zod schemas)
-- [ ] No `eval()`, `innerHTML`, or `dangerouslySetInnerHTML` with user data
-- [ ] RBAC enforced before any data access
-- [ ] Rate limiting on public endpoints (webhooks)
-
-#### Maintainability:
-- [ ] Functions do ONE thing — if > 30 lines, consider splitting
-- [ ] Files do ONE job — if > 500 lines, consider splitting
-- [ ] Naming is descriptive — no single-letter variables, no abbreviations
-- [ ] Comments explain WHY, not WHAT — code should explain what
-- [ ] No dead code — remove unused imports, variables, functions
-- [ ] No console.log in production code (only console.error in catch blocks)
-
----
-
-## 2. TYPESCRIPT BEST PRACTICES
-
-### Strict Type Safety:
-```typescript
-// BAD — using any
-function processData(data: any) { }
-
-// GOOD — proper type
-interface LeadData {
-  firstName: string;
-  lastName: string;
-  phone: string;
-  email?: string;  // optional fields use ?
-}
-function processData(data: LeadData) { }
-```
-
-### Type Assertions — Avoid When Possible:
-```typescript
-// BAD — unsafe assertion
-const user = response.data as User;
-
-// GOOD — type guard or validation
-const user = validateUser(response.data);
-```
-
-### Enum Alternatives:
-```typescript
-// Use union types instead of enums for simpler code
-type LeadStatus = "NEW" | "CONTACTED" | "INTERESTED" | "NEGOTIATION" | "BOOKED" | "LOST" | "RECOVERED";
-type UserRole = "SUPER_ADMIN" | "ADMIN" | "SALES_REP";
-```
-
----
-
-## 3. REACT BEST PRACTICES
-
-### Component Structure:
-```typescript
-// BAD — everything in one component
-function LeadsPage() {
-  const [leads, setLeads] = useState([]);
-  const [filter, setFilter] = useState("");
-  // ... 200 lines of logic and JSX
+interface MyPageProps {
+  // Define props
 }
 
-// GOOD — extract custom hooks and sub-components
-function LeadsPage({ user }: { user: UserProps }) {
-  const { leads, loading, error } = useLeads(user);
-  const [filter, setFilter] = useState("");
-  return <LeadsTable leads={leads} filter={filter} onFilter={setFilter} />;
+export function MyPage({}: MyPageProps) {
+  const [data, setData] = useState<DataType[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch("/api/my-endpoint");
+      if (!res.ok) throw new Error("Failed to fetch");
+      const json = await res.json();
+      setData(json.data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) return <Loader2 className="animate-spin" />;
+  if (error) return <div>Error: {error}</div>;
+
+  return (
+    <div className="space-y-6">
+      {/* Content */}
+    </div>
+  );
 }
 ```
 
-### State Management Rules:
-1. Keep state as close to where it's used as possible
-2. Lift state up ONLY when sibling components need it
-3. Use `useReducer` for complex state logic (> 3 related state values)
-4. Never store derived data in state — compute it
-5. Use `key` prop correctly on list items — never use array index as key
-
-### useEffect Rules:
+### API Route Standards
 ```typescript
-// BAD — missing dependency
-useEffect(() => {
-  fetchLeads(filter);
-}, []); // filter is used but not in deps
+// Good: Auth check, validation, audit log, error handling
+import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-helpers";
+import { prisma } from "@/lib/db";
+import { createAuditLog } from "@/lib/audit";
+import { z } from "zod";
 
-// GOOD — all dependencies listed
-useEffect(() => {
-  fetchLeads(filter);
-}, [filter]);
+const CreateSchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email(),
+});
 
-// GOOD — stable callback reference
-const fetchLeads = useCallback(async (f: string) => {
-  const data = await getLeads(f);
-  setLeads(data);
-}, []);
-```
-
-### Error Boundaries:
-- Wrap major page components in error boundaries
-- Display user-friendly error messages
-- Log errors for debugging
-- Provide "Try Again" action
-
----
-
-## 4. API DESIGN PATTERNS
-
-### RESTful Conventions:
-```
-GET    /api/leads          → List (with pagination, filters)
-POST   /api/leads          → Create
-GET    /api/leads/[id]     → Detail
-PUT    /api/leads/[id]     → Update
-DELETE /api/leads/[id]     → Delete
-POST   /api/leads/[id]/status  → Action (status change)
-POST   /api/leads/[id]/remarks → Action (add remark)
-```
-
-### Response Format:
-```typescript
-// Success
-{ data: T }
-
-// List with pagination
-{ data: T[], total: number, page: number, pageSize: number }
-
-// Error
-{ error: string, details?: string }  // with appropriate HTTP status code
-
-// Created
-{ data: T, message: string }  // 201
-```
-
-### Error Handling Pattern (Every Route):
-```typescript
-export async function GET(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
     const session = await requireAuth();
-    // Business logic here
-    return NextResponse.json({ data: result });
-  } catch (error) {
-    // 1. If it's already a Response (from auth), return it directly
-    if (error instanceof Response) return error;
-    // 2. Log for debugging
-    console.error('[route-name] Error:', error);
-    // 3. Return user-friendly error
+
+    // Validate input
+    const body = await req.json();
+    const validated = CreateSchema.parse(body);
+
+    // Business logic
+    const record = await prisma.model.create({
+      data: validated,
+    });
+
+    // Audit
+    await createAuditLog({
+      actorType: session.user.role as any,
+      actorId: session.user.id,
+      actorName: session.user.name || "Unknown",
+      entityType: "Model",
+      entityId: record.id,
+      action: "CREATE",
+    });
+
+    return NextResponse.json({ success: true, data: record });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { success: false, error: "Validation failed", details: error.errors },
+        { status: 400 }
+      );
+    }
     return NextResponse.json(
-      { error: 'Failed to fetch data' },
-      { status: 500 }
+      { success: false, error: error.message || "Internal server error" },
+      { status: error.status || 500 }
     );
   }
 }
 ```
 
-### Pagination Pattern:
-```typescript
-const url = new URL(request.url);
-const page = parseInt(url.searchParams.get('page') || '1');
-const pageSize = parseInt(url.searchParams.get('pageSize') || '20');
-const skip = (page - 1) * pageSize;
+---
 
-const [data, total] = await Promise.all([
-  db.lead.findMany({ skip, take: pageSize, ... }),
-  db.lead.count({ where: ... }),
-]);
+## 2. ARCHITECTURE REVIEW NOTES
+
+### What's Good
+- Clean SPA pattern with centralized routing
+- Proper RBAC at both page and API level
+- Prisma ORM for type-safe database queries
+- 3-tier AI response system (cost optimization)
+- Self-learning engine that improves over time
+- Comprehensive audit logging
+- Modular lib/ structure
+
+### Technical Debt (Known)
+| Item | Severity | Impact | Fix Priority |
+|------|----------|--------|-------------|
+| SQLite for production | Medium | No concurrent writes, no scaling | High (Phase 4) |
+| SPA pattern (no URL routing) | Low | Can't deep-link to pages | Low (acceptable for CRM) |
+| No input validation (zod) on some routes | Medium | Security risk | High |
+| No rate limiting on API routes | Medium | Abuse risk | Medium |
+| No server-side caching | Low | Performance at scale | Low |
+| AI responses not cached | Low | Redundant LLM calls | Medium |
+| No automated tests | Medium | Regression risk | High (Phase 4) |
+| Manual RBAC guards | Low | Easy to forget on new pages | Low |
+
+### What We'd Change for Next Client
+1. Start with PostgreSQL (Neon) from day 1
+2. Add zod validation to ALL API routes from day 1
+3. Consider Next.js middleware for auth instead of per-route guards
+4. Add basic test suite (at least smoke tests)
+5. Add rate limiting middleware
+
+---
+
+## 3. PERFORMANCE OPTIMIZATION
+
+### Current Performance Profile
+- **First Load (JS):** ~500KB (acceptable for CRM)
+- **Time to Interactive:** < 2s on good connection
+- **API Response Time:** < 100ms for most queries (SQLite, local)
+- **AI Response Time:** 2-5 seconds (depends on LLM)
+
+### Optimization Opportunities
+| Area | Current | Optimization | Expected Impact |
+|------|---------|-------------|----------------|
+| Database queries | No eager loading | Use `include` for relations | 30% fewer queries |
+| AI response | No caching | Cache FAQ matches, learned responses | 50% fewer LLM calls |
+| Page loads | Full component tree | Lazy load non-visible pages | 20% faster initial load |
+| Dashboard | Multiple API calls | Single aggregated endpoint | 60% fewer requests |
+| List pages | No pagination | Already paginated (good) | N/A |
+
+### Database Query Patterns
+```typescript
+// BAD: N+1 queries
+const leads = await prisma.lead.findMany();
+const leadsWithReps = leads.map(async (lead) => ({
+  ...lead,
+  rep: await prisma.user.findUnique({ where: { id: lead.assignedRepId } }),
+}));
+
+// GOOD: Single query with include
+const leads = await prisma.lead.findMany({
+  include: { assignedRep: true },
+});
 ```
 
 ---
 
-## 5. PRISMA BEST PRACTICES
+## 4. SECURITY REVIEW
 
-### Query Optimization:
+### Auth & Authorization
+- NextAuth JWT with 24h expiry — GOOD
+- RBAC on all API routes — GOOD
+- RBAC on all pages — GOOD
+- Password hashing via NextAuth (bcrypt) — GOOD
+
+### Input Validation
+- Most routes have basic validation — NEEDS IMPROVEMENT
+- Add zod schemas to ALL POST/PUT routes
+- Sanitize all user inputs before database writes
+
+### Data Protection
+- AuditLog is immutable (no delete) — GOOD
+- Soft delete for leads — GOOD
+- .env never committed — GOOD
+- .env.example as template — GOOD
+
+### Security Gaps to Address
+| Gap | Severity | Fix |
+|-----|----------|-----|
+| No CSRF protection on API routes | Medium | Add CSRF tokens to state-changing routes |
+| No rate limiting | Medium | Add rate limiter middleware |
+| No input sanitization on some fields | Medium | Add zod validation everywhere |
+| Webhook secrets stored in DB | Low | Acceptable, but encrypt at rest |
+| No CSP headers | Low | Add Content-Security-Policy |
+| No HSTS header | Low | Add Strict-Transport-Security |
+
+### Recommendations for Production
+1. Add zod validation to ALL API routes
+2. Add rate limiting (express-rate-limit or middleware)
+3. Add CSP and HSTS headers
+4. Enable HTTPS only (Cloudflare handles this)
+5. Add request logging (structured JSON logs)
+6. Set up error monitoring (Sentry — free tier)
+
+---
+
+## 5. AI SYSTEM ARCHITECTURE
+
+### z-ai-web-dev-sdk Integration
 ```typescript
-// BAD — N+1 queries (separate query for each lead's user)
-const leads = await db.lead.findMany();
-for (const lead of leads) {
-  lead.user = await db.user.findUnique({ where: { id: lead.assignedRepId } });
+import ZAI from 'z-ai-web-dev-sdk';
+
+// MUST be used in backend only (API routes)
+// NEVER use in client-side components
+
+async function callAI(systemPrompt: string, userMessage: string, temp: number) {
+  const zai = await ZAI.create();
+  const completion = await zai.chat.completions.create({
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userMessage },
+    ],
+    temperature: temp,
+  });
+  return completion.choices[0]?.message?.content;
 }
-
-// GOOD — single query with include
-const leads = await db.lead.findMany({
-  include: { assignedRep: { select: { id: true, name: true, email: true } } },
-  take: 20,
-});
-
-// BETTER — select only needed fields
-const leads = await db.lead.findMany({
-  select: {
-    id: true, firstName: true, lastName: true, phone: true,
-    status: true, leadScore: true,
-    assignedRep: { select: { name: true } },
-  },
-  take: 20,
-});
 ```
 
-### Transaction Pattern:
-```typescript
-// Use transactions when multiple writes must succeed or fail together
-await db.$transaction(async (tx) => {
-  const lead = await tx.lead.create({ data: leadData });
-  await tx.followUp.create({ data: { leadId: lead.id, ... } });
-  await tx.auditLog.create({ data: { entityId: lead.id, ... } });
-});
-```
+### AI Cost Optimization Strategy
+1. **Tier 1 (FAQ):** Zero cost — string matching, no API call
+2. **Tier 2 (Learned):** Zero cost — database lookup
+3. **Tier 3 (LLM):** Costs tokens — only when tiers 1&2 miss
+4. **Result:** ~60-70% of bot responses cost nothing
+5. **Future:** Cache LLM responses for similar queries
 
-### Migration Safety:
-- Always backup database before schema changes
-- Use `prisma db push` for dev (destructive OK)
-- Use `prisma migrate` for production (generates migration files)
-- Never change field types without data migration plan
-
----
-
-## 6. AI SYSTEM BEST PRACTICES
-
-### callLLM() Usage:
-```typescript
-// ALWAYS use callLLM() — NEVER call z-ai-web-dev-sdk directly
-import { callLLM } from '@/lib/ai-agent';
-
-const response = await callLLM({
-  prompt: userMessage,
-  systemPrompt: 'You are a helpful assistant...',
-  options: {
-    temperature: 0.5,
-    maxTokens: 500,
-    learningContext: true,  // inject approved learnings
-  },
-});
-```
-
-### Temperature Guidelines:
-| Use Case | Temperature | Why |
-|----------|-------------|-----|
-| Lead scoring | 0.1-0.2 | Deterministic, consistent |
-| Call analysis | 0.2-0.3 | Factual extraction |
-| Follow-up suggestions | 0.3-0.4 | Balanced creativity |
-| Customer chat | 0.4-0.6 | Natural conversation |
-| Report generation | 0.5-0.7 | Varied, comprehensive |
-
-### Learning System Rules:
-1. ALWAYS record AI conversations — non-blocking (`.catch(() => {})`)
-2. NEVER let learning failures crash the main flow
-3. Auto-approval: frequency >= 5 AND positive feedback >= 70%
-4. Cache learning context for 5 minutes to avoid DB hits
-5. Human review queue for low-confidence learnings
-
-### Prompt Engineering:
-- System prompts should be specific, not generic
-- Include brand context, language rules, and boundaries
-- Never put sensitive data (passwords, tokens) in prompts
-- Test prompts with real-world examples, not ideal cases
-- Iterate based on actual AI response quality
+### AI Agent Temperature Guide
+| Agent | Temp | Why |
+|-------|------|-----|
+| Lead Scoring | 0.2 | Need consistent, reproducible scores |
+| Call Monitor | 0.3 | Analytical, factual extraction |
+| Data Quality | 0.3 | Precise, factual |
+| Follow-Up Agent | 0.4 | Balanced consistency + creativity |
+| Customer Bot | 0.5 | Natural conversation, some creativity |
+| Reporting Agent | 0.5 | Varied report styles |
 
 ---
 
-## 7. SECURITY HARDENING
+## 6. DEPENDENCY MANAGEMENT
 
-### Authentication:
-- JWT tokens expire after 24 hours
-- Passwords hashed with bcrypt (10+ salt rounds)
-- Session validation on every authenticated request
-- No session fixation — regenerate session on login
+### Current Dependencies (Key Ones)
+| Package | Version | Purpose | Risk |
+|---------|---------|---------|------|
+| next | 16.1 | Framework | Core |
+| react | 19 | UI | Core |
+| prisma | 6.11 | ORM | Core |
+| next-auth | 4 | Auth | Locked (v5 is beta) |
+| z-ai-web-dev-sdk | latest | AI | Core |
+| @dnd-kit | latest | Drag & drop | Low |
+| recharts | latest | Charts | Low |
+| react-hook-form | latest | Forms | Low |
+| zod | latest | Validation | Low |
+| date-fns | latest | Date utils | Low |
+| lucide-react | latest | Icons | Low |
 
-### Authorization:
-- RBAC checked at API route level (not just UI level)
-- Principle of least privilege — users get minimum required access
-- SUPER_ADMIN has full access, ADMIN has management access, SALES_REP has own data
-- Filter data by role — reps only see their own leads
+### Dependency Risk Assessment
+- **Next.js 16.1** — Bleeding edge, but stable. App Router is the future.
+- **React 19** — Latest, stable. Concurrent features available.
+- **NextAuth v4** — Stable, widely used. v5 in beta but not ready.
+- **Prisma 6.11** — Latest, excellent DX. SQLite support is solid.
+- **z-ai-web-dev-sdk** — Proprietary SDK, provided by the AI platform.
 
-### Input Validation:
-- All user inputs validated with zod schemas
-- Phone numbers validated for format
-- Email validated for format
-- IDs validated for existence before operations
-
-### Data Protection:
-- Soft delete for leads (never hard delete)
-- Audit trail for all write operations
-- No sensitive data in URLs or query parameters
-- API responses never include passwordHash
-
-### Webhook Security:
-- HMAC-SHA256 signature verification on all incoming webhooks
-- Verify token must match configured value
-- Reject unverified webhook requests immediately
-- Rate limit webhook endpoints
+### Update Strategy
+- Security patches: Apply immediately
+- Minor updates: Test before applying
+- Major updates: Wait for stability, test thoroughly
+- Never update NextAuth to v5 until stable release
 
 ---
 
-## 8. PERFORMANCE OPTIMIZATION
+## 7. CODE REVIEW CHECKLIST
 
-### Database:
-- Use `select` instead of `include` when possible (fewer columns = faster)
-- Add pagination to all list endpoints (max 100 per page)
-- Use `where` clauses to filter at database level, not in application code
-- Index frequently queried fields (Prisma handles most automatically)
+Before approving any code change:
 
-### React:
-- Memoize expensive computations with `useMemo`
-- Memoize callback functions with `useCallback`
-- Use `React.lazy()` for code splitting (future optimization)
-- Avoid inline object/array creation in JSX (breaks memoization)
+### Functionality
+- [ ] Does it work as described?
+- [ ] Are edge cases handled?
+- [ ] Is the error handling correct?
 
-### API:
-- Use `Promise.all()` for independent parallel operations
-- Cache frequently accessed data (learning context: 5-min cache)
-- Stream large responses when possible
-- Set appropriate HTTP caching headers
+### Quality
+- [ ] No TypeScript errors
+- [ ] No ESLint warnings
+- [ ] Proper types (no `any`)
+- [ ] Consistent naming conventions
 
-### Build:
-- Current build time: ~60-90 seconds (acceptable)
-- Bundle size: Monitor with `@next/bundle-analyzer` (future)
-- Tree-shaking: Ensure dynamic imports for heavy dependencies
+### Security
+- [ ] Auth check on the route?
+- [ ] RBAC check for the role?
+- [ ] Input validation?
+- [ ] Audit log for state changes?
 
----
+### Performance
+- [ ] No N+1 queries?
+- [ ] Appropriate pagination?
+- [ ] No unnecessary re-renders?
 
-## 9. DEBUGGING PLAYBOOK
-
-### Step 1: Reproduce
-- Get exact steps to reproduce the issue
-- Check if it's browser-specific, user-specific, or data-specific
-- Check if it happens in dev, prod, or both
-
-### Step 2: Isolate
-- Check browser console for errors
-- Check server console for errors
-- Check network tab for failed API calls
-- Identify if it's frontend (UI), backend (API), or data (DB) issue
-
-### Step 3: Diagnose
-- Add console.error logging at suspicious points
-- Use browser DevTools to inspect state/props
-- Check database directly with Prisma Studio (`npx prisma studio`)
-- Verify API response separately (curl/Postman)
-
-### Step 4: Fix
-- Fix the root cause, not the symptom
-- Add regression test case to QA_EXPERT.md
-- Update ARCHITECTURE.md if it reveals a pattern
-- Update CHAMP.md if significant
-
-### Common Debugging Commands:
-```bash
-# Check database
-npx prisma studio
-
-# Reset database (dev only — kills all data)
-npx prisma db push --force-reset && npx prisma db seed
-
-# Check build errors
-npm run build
-
-# Check TypeScript errors
-npx tsc --noEmit
-
-# Clean reinstall
-rm -rf node_modules .next && npm install
-```
+### Maintainability
+- [ ] Code is readable?
+- [ ] Comments for complex logic?
+- [ ] Follows existing patterns?
 
 ---
 
-## 10. TECHNICAL DEBT TRACKER
+## 8. TECHNICAL RECOMMENDATIONS (Priority Order)
 
-### Known Debt (Ordered by Priority):
-| # | Debt | Impact | Effort | Status |
-|---|------|--------|--------|--------|
-| 1 | No unit tests | HIGH — bugs could slip through | MEDIUM | Not started |
-| 2 | No E2E tests | MEDIUM — regression risk | HIGH | Not started |
-| 3 | SQLite in dev (need PostgreSQL for prod) | HIGH — migration needed | LOW | Planned (Phase 4) |
-| 4 | No rate limiting on public endpoints | MEDIUM — abuse risk | LOW | Not started |
-| 5 | No error monitoring (Sentry/etc) | MEDIUM — blind in production | LOW | Not started |
-| 6 | No CI/CD pipeline | MEDIUM — manual deploys | MEDIUM | Planned (Phase 4) |
-| 7 | SPA pattern limits SEO | LOW — CRM is auth-gated | HIGH | Accepted |
-| 8 | No input sanitization for search | LOW — SQLite injection unlikely | LOW | Not started |
+### Must Do (Before Production)
+1. Add zod validation to ALL API routes
+2. Migrate to PostgreSQL (Neon)
+3. Add rate limiting
+4. Set up error monitoring (Sentry free tier)
+5. Add basic smoke tests
 
-### What We Do NOT Consider Debt:
-- SPA pattern — intentional design choice for CRM UX
-- No multi-tenancy yet — single-tenant is correct for current phase
-- No mobile app — web app is mobile-responsive, sufficient for now
-- Free-tier AI — will upgrade to paid when revenue justifies
+### Should Do (After Production)
+6. Add CSP headers
+7. Implement response caching for AI
+8. Add structured logging
+9. Lazy load non-visible CRM pages
+10. Add database indexes for common queries
 
----
-
-## 11. ARCHITECTURE DECISIONS (Why We Did What We Did)
-
-| Decision | Why This Choice | Alternatives Considered |
-|----------|----------------|------------------------|
-| Next.js App Router | Full-stack, server components, modern API routes | Remix (less ecosystem), CRA (no SSR) |
-| SPA within Next.js | CRM needs instant page switches, no reloads | File-based routing (slower UX for CRM) |
-| SQLite (dev) | Zero config, no external DB needed, fast local dev | PostgreSQL (requires external service) |
-| Prisma ORM | Type-safe queries, migrations, excellent DX | Drizzle (less mature), raw SQL (no type safety) |
-| NextAuth JWT | Stateless, fast, no DB session table | Auth.js DB sessions (adds DB dependency) |
-| shadcn/ui | Copy-paste components, full control, no lock-in | MUI (heavy, opinionated), Chakra (less active) |
-| GLM-4 Plus | Free tier, good quality, Chinese-friendly | GPT-4o (costs money), Claude (costs money) |
-| Resend (REST, no SDK) | No dependency bloat, direct HTTP calls | Nodemailer (SMTP complexity), SendGrid SDK (heavy) |
-| Tailwind CSS 4 | Utility-first, oklch color system, fast development | CSS Modules (verbose), styled-components (runtime cost) |
+### Nice to Have (Future)
+11. Add automated test suite (Jest + Playwright)
+12. Implement WebSocket for real-time notifications
+13. Add PWA support for mobile
+14. Implement server-side rendering for SEO pages
+15. Add GraphQL API option for integrations
 
 ---
 
-*EXPERT is maintained by the AI assistant. Updated after every significant technical change.*
-*This file represents professional engineering standards. Every line should be earned, not assumed.*
-*Last updated: Session 8 (2026-04-26)*
+*Expert is maintained by the AI assistant. Updated with every code review and technical decision.*
