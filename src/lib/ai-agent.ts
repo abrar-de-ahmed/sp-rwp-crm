@@ -374,7 +374,55 @@ export function calculateLeadScore(input: LeadScoringInput): {
 
 // ──────────────────────────────────────
 // ZAI SDK Helper (Enhanced with Learning Context)
+// Includes retry with exponential backoff for cold-start resilience
 // ──────────────────────────────────────
+
+// AI warmup: keeps the backend function warm to reduce cold-start errors
+let lastWarmupTime = 0;
+const WARMUP_INTERVAL_MS = 4 * 60 * 1000; // every 4 minutes
+
+async function warmupAI(): Promise<void> {
+  const now = Date.now();
+  if (now - lastWarmupTime > WARMUP_INTERVAL_MS) {
+    try {
+      const zai = await ZAI.create();
+      await zai.chat.completions.create({
+        model: 'glm-4-plus',
+        messages: [{ role: 'user', content: 'ping' }],
+        max_tokens: 1,
+      });
+      lastWarmupTime = now;
+      console.log('[AI Agent] Warmup ping successful');
+    } catch (err) {
+      console.warn('[AI Agent] Warmup ping failed (non-blocking):', err);
+    }
+  }
+}
+
+// Retry configuration
+const MAX_RETRIES = 3;
+const BASE_DELAY_MS = 2000; // 2 seconds
+const MAX_DELAY_MS = 15000; // 15 seconds cap
+
+function isRetryableError(error: unknown): boolean {
+  if (!error) return false;
+  const msg = error instanceof Error ? error.message : String(error);
+  return (
+    msg.includes('PreconditionFailed') ||
+    msg.includes('pending state') ||
+    msg.includes('503') ||
+    msg.includes('502') ||
+    msg.includes('429') ||
+    msg.includes('ECONNREFUSED') ||
+    msg.includes('ECONNRESET') ||
+    msg.includes('ETIMEDOUT') ||
+    msg.includes('socket hang up')
+  );
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export async function callLLM(
   prompt: string,
@@ -385,30 +433,49 @@ export async function callLLM(
     learningContext?: string;
   }
 ): Promise<string> {
-  try {
-    const zai = await ZAI.create();
-
-    // Inject learning context into system prompt if provided
-    let enhancedSystemPrompt = systemPrompt;
-    if (options?.learningContext) {
-      enhancedSystemPrompt = `${systemPrompt}\n\n${options.learningContext}`;
-    }
-
-    const response = await zai.chat.completions.create({
-      model: 'glm-4-plus',
-      messages: [
-        { role: 'system', content: enhancedSystemPrompt },
-        { role: 'user', content: prompt },
-      ],
-      temperature: options?.temperature ?? 0.4,
-      max_tokens: options?.maxTokens ?? 500,
-    });
-
-    return response.choices[0]?.message?.content ?? '';
-  } catch (error) {
-    console.error('[AI Agent] LLM call failed:', error);
-    throw new Error('AI service unavailable. Please try again later.');
+  // Inject learning context into system prompt if provided
+  let enhancedSystemPrompt = systemPrompt;
+  if (options?.learningContext) {
+    enhancedSystemPrompt = `${systemPrompt}\n\n${options.learningContext}`;
   }
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      // Attempt warmup before first try
+      if (attempt === 0) await warmupAI();
+
+      const zai = await ZAI.create();
+      const response = await zai.chat.completions.create({
+        model: 'glm-4-plus',
+        messages: [
+          { role: 'system', content: enhancedSystemPrompt },
+          { role: 'user', content: prompt },
+        ],
+        temperature: options?.temperature ?? 0.4,
+        max_tokens: options?.maxTokens ?? 500,
+      });
+
+      return response.choices[0]?.message?.content ?? '';
+    } catch (error) {
+      const canRetry = isRetryableError(error);
+      const hasRetriesLeft = attempt < MAX_RETRIES;
+
+      if (canRetry && hasRetriesLeft) {
+        const delay = Math.min(BASE_DELAY_MS * Math.pow(2, attempt), MAX_DELAY_MS);
+        console.warn(
+          `[AI Agent] Retryable error (attempt ${attempt + 1}/${MAX_RETRIES + 1}), retrying in ${delay}ms...`,
+          error instanceof Error ? error.message : error
+        );
+        await sleep(delay);
+        continue;
+      }
+
+      console.error('[AI Agent] LLM call failed after all retries:', error);
+      throw new Error('AI service unavailable. Please try again later.');
+    }
+  }
+
+  throw new Error('AI service unavailable. Please try again later.');
 }
 
 export function parseJSONResponse(text: string): Record<string, unknown> {
