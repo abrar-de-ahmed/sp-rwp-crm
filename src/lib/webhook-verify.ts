@@ -1,5 +1,3 @@
-import { createHmac } from 'crypto';
-
 // ──────────────────────────────────────
 // Webhook Signature Verification
 // ──────────────────────────────────────
@@ -10,20 +8,13 @@ import { createHmac } from 'crypto';
  * Meta (Facebook/Instagram) signs webhook payloads using HMAC-SHA256:
  *   signature = "sha256=" + HMAC-SHA256(appSecret, rawBody)
  *
- * This function computes the expected signature and compares it
- * against the provided one using a constant-time comparison to
- * prevent timing attacks.
- *
- * @param payload   — The raw string body of the request (not parsed JSON).
- * @param signature — The value of the X-Hub-Signature-256 header (e.g. "sha256=abcdef…").
- * @param appSecret — The Meta App Secret used to compute the HMAC.
- * @returns true if the signature is valid, false otherwise.
+ * Uses Web Crypto API which works on both Node.js and Cloudflare Workers.
  */
-export function verifyWebhookSignature(
+export async function verifyWebhookSignature(
   payload: string,
   signature: string,
   appSecret: string,
-): boolean {
+): Promise<boolean> {
   if (!payload || !signature || !appSecret) {
     console.warn('[webhook-verify] Missing payload, signature, or appSecret');
     return false;
@@ -38,23 +29,37 @@ export function verifyWebhookSignature(
 
   const providedHash = signature.slice(expectedPrefix.length);
 
-  const computedHash = createHmac('sha256', appSecret)
-    .update(payload, 'utf8')
-    .digest('hex');
-
-  // Use timingSafeEqual to prevent timing attacks
   try {
-    const providedBuf = Buffer.from(providedHash, 'hex');
-    const computedBuf = Buffer.from(computedHash, 'hex');
+    // Use Web Crypto API (works on both Node.js and Cloudflare Workers)
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(appSecret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign'],
+    );
+    const signed = await crypto.subtle.sign(
+      'HMAC',
+      key,
+      encoder.encode(payload),
+    );
+    const computedHash = Array.from(new Uint8Array(signed))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
 
-    if (providedBuf.length !== computedBuf.length) {
+    // Constant-time comparison
+    if (providedHash.length !== computedHash.length) {
       return false;
     }
 
-    return providedBuf.equals(computedBuf);
+    let result = 0;
+    for (let i = 0; i < providedHash.length; i++) {
+      result |= providedHash.charCodeAt(i) ^ computedHash.charCodeAt(i);
+    }
+    return result === 0;
   } catch {
-    // Fallback: string comparison (less secure but won't crash)
-    console.warn('[webhook-verify] timingSafeEqual failed, falling back to string comparison');
-    return providedHash === computedHash;
+    console.warn('[webhook-verify] Signature verification failed');
+    return false;
   }
 }

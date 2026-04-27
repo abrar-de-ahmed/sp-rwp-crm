@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
 
     // Verify webhook signature if app secret is configured
     const signature = request.headers.get('x-hub-signature-256');
-    if (!verifyWebhookSignature(rawBody, signature)) {
+    if (!(await verifyWebhookSignature(rawBody, signature))) {
       return NextResponse.json(
         { error: 'Invalid signature' },
         { status: 403 },

@@ -1,0 +1,9 @@
+name = "sp-rwp-crm"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = ".vercel/output/static"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "sp-rwp-crm-db"
+database_id = "7ec44665-f496-4483-a4ef-b6cdfe45f3a4"

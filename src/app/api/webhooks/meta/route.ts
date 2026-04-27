@@ -600,7 +600,7 @@ export async function POST(request: NextRequest) {
     const appSecret = await getMetaAppSecret();
 
     if (appSecret && signature) {
-      const isValid = verifyWebhookSignature(rawBody, signature, appSecret);
+      const isValid = await verifyWebhookSignature(rawBody, signature, appSecret);
       if (!isValid) {
         console.warn('[meta-webhook] Invalid webhook signature — rejecting');
         // Still return 200 to avoid Meta retrying, but log the event

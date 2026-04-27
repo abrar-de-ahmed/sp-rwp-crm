@@ -1,4 +1,3 @@
-import crypto from 'crypto';
 import { db } from '@/lib/db';
 
 // ──────────────────────────────────────
@@ -391,11 +390,12 @@ export async function markWhatsAppAsRead(messageId: string): Promise<void> {
 /**
  * Verify the webhook signature using HMAC-SHA256.
  * Meta sends X-Hub-Signature-256 header for verification.
+ * Uses Web Crypto API for compatibility with Cloudflare Workers.
  */
-export function verifyWebhookSignature(
+export async function verifyWebhookSignature(
   body: string,
   signature: string | null,
-): boolean {
+): Promise<boolean> {
   const appSecret = process.env.WHATSAPP_APP_SECRET;
 
   // If no app secret configured, skip verification (dev mode)
@@ -410,21 +410,43 @@ export function verifyWebhookSignature(
   }
 
   try {
-    const expectedSignature = `sha256=${crypto
-      .createHmac('sha256', appSecret)
-      .update(body)
-      .digest('hex')}`;
-
-    const isValid = crypto.timingSafeEqual(
-      Buffer.from(signature),
-      Buffer.from(expectedSignature),
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(appSecret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign'],
     );
+    const signed = await crypto.subtle.sign(
+      'HMAC',
+      key,
+      encoder.encode(body),
+    );
+    const expectedSignature = `sha256=${Array.from(new Uint8Array(signed))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')}`;
 
-    if (!isValid) {
+    // Constant-time comparison
+    const sigBuf = encoder.encode(signature);
+    const expBuf = encoder.encode(expectedSignature);
+
+    if (sigBuf.length !== expBuf.length) {
+      return false;
+    }
+
+    const sigArr = new Uint8Array(sigBuf);
+    const expArr = new Uint8Array(expBuf);
+    let result = 0;
+    for (let i = 0; i < sigArr.length; i++) {
+      result |= sigArr[i] ^ expArr[i];
+    }
+
+    if (result !== 0) {
       console.error('[WhatsApp] Webhook signature mismatch');
     }
 
-    return isValid;
+    return result === 0;
   } catch (error) {
     console.error('[WhatsApp] Signature verification error:', error);
     return false;
