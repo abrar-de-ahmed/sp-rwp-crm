@@ -379,13 +379,13 @@ export default function TeamPage({ user }: { user: PlaceholderUser }) {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {leaderboard.map((rep, idx) => {
+                  {leaderboard.slice(0, 3).map((rep, idx) => {
                     const medals: { icon: typeof Trophy; color: string; bg: string; ring: string; label: string }[] = [
                       { icon: Trophy, color: 'text-yellow-500', bg: 'bg-yellow-50', ring: 'ring-yellow-300', label: '1st Place' },
                       { icon: Medal, color: 'text-gray-400', bg: 'bg-gray-50', ring: 'ring-gray-300', label: '2nd Place' },
                       { icon: Award, color: 'text-amber-700', bg: 'bg-amber-50', ring: 'ring-amber-300', label: '3rd Place' },
                     ];
-                    const medal = medals[idx];
+                    const medal = medals[idx] ?? medals[2];
                     const Icon = medal.icon;
                     const rate = rep.callsMade > 0 ? ((rep.conversions / rep.callsMade) * 100).toFixed(1) : '0.0';
                     return (

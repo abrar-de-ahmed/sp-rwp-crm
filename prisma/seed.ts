@@ -8,8 +8,10 @@ async function main() {
 
   // ── Hash passwords ────────────────────────────────────
   const adminPassword = "admin123";
+  const managerPassword = "manager123";
   const repPassword = "password123";
   const adminHash = await bcrypt.hash(adminPassword, 12);
+  const managerHash = await bcrypt.hash(managerPassword, 12);
   const repHash = await bcrypt.hash(repPassword, 12);
   console.log(`  Password hashes generated`);
 
@@ -30,7 +32,7 @@ async function main() {
         email: "manager@spcrm.com",
         role: "ADMIN",
         phone: "03009876543",
-        password: adminHash,
+        password: managerHash,
       },
       {
         name: "Ali Khan",

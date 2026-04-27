@@ -36,6 +36,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/hooks/use-toast';
 import { format, formatDistanceToNow } from 'date-fns';
 
 interface PlaceholderUser {
@@ -120,17 +121,8 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-export default function CallRecordingsPage({ user }: { user: PlaceholderUser }) {
-  if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Mic className="w-12 h-12 mx-auto text-muted-foreground opacity-20" />
-          <p className="text-muted-foreground mt-3">Access Denied. Admin only.</p>
-        </div>
-      </div>
-    );
-  }
+function CallRecordingsContent() {
+  const { toast } = useToast();
 
   const [calls, setCalls] = useState<CallRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -209,9 +201,9 @@ export default function CallRecordingsPage({ user }: { user: PlaceholderUser }) 
         prev.map((c) => (c.id === selectedCall.id ? { ...c, repRemarks: remarks } : c))
       );
       setSelectedCall({ ...selectedCall, repRemarks: remarks });
-      // Note: Toast import not present, using alert as fallback
+      toast({ title: 'Remarks saved successfully' });
     } catch {
-      alert('Failed to save remarks. Please try again.');
+      toast({ title: 'Failed to save remarks', variant: 'destructive' });
     } finally {
       setSavingRemarks(false);
     }
@@ -675,4 +667,18 @@ export default function CallRecordingsPage({ user }: { user: PlaceholderUser }) 
       </Card>
     </div>
   );
+}
+
+export default function CallRecordingsPage({ user }: { user: PlaceholderUser }) {
+  if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Mic className="w-12 h-12 mx-auto text-muted-foreground opacity-20" />
+          <p className="text-muted-foreground mt-3">Access Denied. Admin only.</p>
+        </div>
+      </div>
+    );
+  }
+  return <CallRecordingsContent />;
 }
