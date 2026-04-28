@@ -5,10 +5,11 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
+COPY package.json bun.lock* package-lock.json* ./
 COPY prisma ./prisma/
 
-RUN npm ci
+# Use npm install (works with or without lock file)
+RUN npm install --legacy-peer-deps
 
 # Generate Prisma client
 RUN npx prisma generate
@@ -20,6 +21,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Disable telemetry
+ENV NEXT_TELEMETRY_DISABLED=1
+
 RUN npx next build
 
 # Production image
@@ -27,10 +31,12 @@ FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
+# Copy standalone output
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
