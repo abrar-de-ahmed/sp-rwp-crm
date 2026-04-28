@@ -55,10 +55,6 @@ export async function GET(
             },
           },
         },
-        auditLogs: {
-          orderBy: { createdAt: 'desc' },
-          take: 50,
-        },
       },
     });
 
