@@ -1,6 +1,5 @@
 FROM node:20-alpine AS base
 
-# Install dependencies only when needed
 FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
@@ -31,29 +30,23 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
 # Copy standalone output
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-# Copy Prisma schema and generated client for runtime
+# Copy Prisma for runtime schema push
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 
-# Startup script: push schema to DB then start server
-RUN echo '#!/bin/sh' > /app/start.sh && \
-    echo 'npx prisma db push --accept-data-loss 2>/dev/null || true' >> /app/start.sh && \
-    echo 'exec node server.js' >> /app/start.sh && \
-    chmod +x /app/start.sh
-
-USER nextjs
+# Copy bcryptjs and sharp (serverExternalPackages)
+COPY --from=builder /app/node_modules/bcryptjs ./node_modules/bcryptjs
+COPY --from=builder /app/node_modules/sharp ./node_modules/sharp
 
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["/app/start.sh"]
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss 2>/dev/null; node server.js"]
