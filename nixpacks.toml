@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["...", "cputils"]
+
+[phases.install]
+cmds = ["npm ci --omit=dev"]
+
+[phases.build]
+cmds = ["npx prisma generate", "npm run build"]
+
+[start]
+cmd = "sh -c 'mkdir -p .next/standalone/.next/static .next/standalone/public && cp -r .next/static/* .next/standalone/.next/static/ && cp -r public/* .next/standalone/public/ 2>/dev/null; exec node .next/standalone/server.js'"
