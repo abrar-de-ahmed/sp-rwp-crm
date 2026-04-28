@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
+
+// Pre-computed bcrypt hashes (bcryptjs, 12 rounds)
+// admin123, manager123, password123
+const ADMIN_HASH = "$2b$12$H4wQOp0N2Aa2fE4yPy9mZuwlpHRUNN.MWtn38NA.4WphlowJOsCbi";
+const MANAGER_HASH = "$2b$12$co2lhtjTa5x1TE2geOzlKuD/zeO3hx/yQnHGcQQpoSB/RDvyM17/u";
+const REP_HASH = "$2b$12$mayAb..UQQYT94sCbdbn7ulZldh6GZeDXvEEd4Km6WdmsHhGC0bDW";
 
 export async function POST(request: Request) {
   try {
@@ -12,18 +17,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "Database already seeded", userCount: existingUsers });
     }
 
-    const adminHash = await bcrypt.hash("admin123", 12);
-    const managerHash = await bcrypt.hash("manager123", 12);
-    const repHash = await bcrypt.hash("password123", 12);
-
     const users = await Promise.all([
-      prisma.user.create({ data: { name: "Super Admin", email: "admin@spcrm.com", role: "SUPER_ADMIN", phone: "03001234567", passwordHash: adminHash, isActive: true } }),
-      prisma.user.create({ data: { name: "Ahmed Manager", email: "manager@spcrm.com", role: "ADMIN", phone: "03009876543", passwordHash: managerHash, isActive: true } }),
-      prisma.user.create({ data: { name: "Ali Khan", email: "ali@spcrm.com", role: "SALES_REP", phone: "03121234567", passwordHash: repHash, isActive: true } }),
-      prisma.user.create({ data: { name: "Bilal Ahmed", email: "bilal@spcrm.com", role: "SALES_REP", phone: "03139876543", passwordHash: repHash, isActive: true } }),
-      prisma.user.create({ data: { name: "Sara Tariq", email: "sara@spcrm.com", role: "SALES_REP", phone: "03211234567", passwordHash: repHash, isActive: true } }),
-      prisma.user.create({ data: { name: "Omar Farooq", email: "omar@spcrm.com", role: "SALES_REP", phone: "03229876543", passwordHash: repHash, isActive: true } }),
-      prisma.user.create({ data: { name: "Zain Malik", email: "zain@spcrm.com", role: "SALES_REP", phone: "03331234567", passwordHash: repHash, isActive: true } }),
+      prisma.user.create({ data: { name: "Super Admin", email: "admin@spcrm.com", role: "SUPER_ADMIN", phone: "03001234567", passwordHash: ADMIN_HASH, isActive: true } }),
+      prisma.user.create({ data: { name: "Ahmed Manager", email: "manager@spcrm.com", role: "ADMIN", phone: "03009876543", passwordHash: MANAGER_HASH, isActive: true } }),
+      prisma.user.create({ data: { name: "Ali Khan", email: "ali@spcrm.com", role: "SALES_REP", phone: "03121234567", passwordHash: REP_HASH, isActive: true } }),
+      prisma.user.create({ data: { name: "Bilal Ahmed", email: "bilal@spcrm.com", role: "SALES_REP", phone: "03139876543", passwordHash: REP_HASH, isActive: true } }),
+      prisma.user.create({ data: { name: "Sara Tariq", email: "sara@spcrm.com", role: "SALES_REP", phone: "03211234567", passwordHash: REP_HASH, isActive: true } }),
+      prisma.user.create({ data: { name: "Omar Farooq", email: "omar@spcrm.com", role: "SALES_REP", phone: "03229876543", passwordHash: REP_HASH, isActive: true } }),
+      prisma.user.create({ data: { name: "Zain Malik", email: "zain@spcrm.com", role: "SALES_REP", phone: "03331234567", passwordHash: REP_HASH, isActive: true } }),
     ]);
 
     const leads = [
