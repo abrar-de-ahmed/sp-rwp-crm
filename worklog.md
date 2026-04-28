@@ -287,3 +287,43 @@ Stage Summary:
 - READY FOR STAGE 5: Railway deployment (SQLite → PostgreSQL + Railway.app)
 - STOPPED before Railway deploy per user instructions
 
+---
+Task ID: 10
+Agent: Main (Super Z)
+Task: Session #10 — Railway Deploy Continuation, Bug Fix, Safety Protocol, Master Documents
+
+Work Log:
+- Restored project context from conversation summary (context reset between sessions)
+- Cloned repo from GitHub (abrar-de-ahmed/sp-rwp-crm)
+- Verified all master .md files present: CHAMP.md, MASTER_PROMPT.md, SP_RWP_CRM_MASTER_PROMPT_v3.md, STATE.md, worklog.md
+- Verified all 7 agent files in agents/: ARCHITECTURE.md, CRM_BRAIN.md, PLAYBOOK.md, CLIENT_CONTEXT.md, RAG_PLAYBOOK.md, EXPERT.md, QA_EXPERT.md
+- Diagnosed "Failed to Fetch" bug reported by user:
+  - User reported: Clicking lead "Tarq Mahmood" in All Leads → "Error: Failed to fetch"
+  - User reported: Pipeline card click → redirects to All Leads → same error
+  - Root cause: GET /api/leads/[id] included `auditLogs` in Prisma query include block
+  - `auditLogs` is NOT a Prisma relation on Lead model (AuditLog uses string entityType/entityId references, not foreign keys)
+  - This caused Prisma to throw "Unknown field" error → 500 response → frontend shows "Failed to fetch"
+- Fixed: Removed `auditLogs: { orderBy: { createdAt: 'desc' }, take: 50 }` from src/app/api/leads/[id]/route.ts
+- Verified fix: switched schema to sqlite locally, ran prisma generate + db push + seed, ran `next build` → 0 errors, 51 routes
+- Reverted schema to postgresql for Railway
+- Created branch `fix/lead-detail-fetch-error`, committed, pushed to GitHub
+- Merged to main with `--no-ff` merge commit (e3e26c8)
+- Updated STATE.md with Session #10 status (deployment live, bug fixed, safety protocol)
+- Created Master Deployment Document: SP_RWP_CRM_DEPLOYMENT_MASTER.md (798 lines) saved to /home/z/my-project/download/
+- Established Safety Protocol:
+  1. npm run build must pass before any push
+  2. Push to branch first → test → merge to main
+  3. Never commit .env or secrets
+  4. Never delete/overwrite .md files — always append
+  5. Always update CHAMP.md, STATE.md, worklog.md after every session
+  6. API keys in Railway env vars ONLY
+
+Stage Summary:
+- Lead Detail + Pipeline "Failed to Fetch" bug: FIXED and pushed to GitHub
+- Railway deployment: LIVE (was completed in previous session)
+- Safety Protocol: ESTABLISHED and documented
+- Master Deployment Document: CREATED (798 lines, comprehensive reference)
+- All .md master documents: VERIFIED safe and intact on GitHub
+- Build: PASS (0 errors, 51 routes)
+- Next: Expert QA on live Railway deployment, WhatsApp/Meta verification, custom domain setup
+
