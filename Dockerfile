@@ -1,7 +1,7 @@
-FROM node:20-alpine AS base
+FROM node:20-slim AS base
 
 FROM base AS deps
-RUN apk add --no-cache libc6-compat openssl
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 COPY package.json bun.lock* package-lock.json* ./
@@ -21,21 +21,19 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npx next build
 
 # Production image
-FROM base AS runner
+FROM node:20-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Copy standalone output (includes its own node_modules with @prisma/client JS)
+# Copy standalone output
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-# Copy Prisma schema
+# Copy Prisma schema + engine binaries
 COPY --from=builder /app/prisma ./prisma
-
-# CRITICAL: Copy Prisma engine binaries (not included in standalone output)
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
