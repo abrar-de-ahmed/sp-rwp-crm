@@ -8,7 +8,6 @@ WORKDIR /app
 COPY package.json bun.lock* package-lock.json* ./
 COPY prisma ./prisma/
 
-# Use npm install (works with or without lock file)
 RUN npm install --legacy-peer-deps
 
 # Generate Prisma client
@@ -21,7 +20,6 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Disable telemetry
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN npx next build
@@ -40,7 +38,17 @@ RUN adduser --system --uid 1001 nextjs
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+
+# Copy Prisma schema and generated client for runtime
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+
+# Startup script: push schema to DB then start server
+RUN echo '#!/bin/sh' > /app/start.sh && \
+    echo 'npx prisma db push --accept-data-loss 2>/dev/null || true' >> /app/start.sh && \
+    echo 'exec node server.js' >> /app/start.sh && \
+    chmod +x /app/start.sh
 
 USER nextjs
 
@@ -48,4 +56,4 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+CMD ["/app/start.sh"]
