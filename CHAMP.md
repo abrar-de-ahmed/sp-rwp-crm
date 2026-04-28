@@ -1,7 +1,7 @@
 # CHAMP — Supervisor Agent | SP RWP CRM
 
-> **Last Updated:** 2026-04-27
-> **Session:** #8 (Agent Intelligence System — ALL 7 FILES DEPLOYED)
+> **Last Updated:** 2026-04-29
+> **Session:** #10 (Railway Deploy + Bug Fix + Safety Protocol + Master Docs)
 > **Project Owner:** Abrar Ahmed (GitHub: abrar-de-ahmed)
 
 ## HOW TO USE CHAMP (Read This First)
@@ -48,7 +48,9 @@ The AI will:
 | **Purpose** | AI-Powered Customer Relationship Management for a sports facility |
 | **Industry** | Sports / Fitness / Recreation |
 | **Location** | Rawalpindi, Pakistan |
-| **GitHub Repo** | https://github.com/abrar-de-ahmed/sp-rwp-crm (PRIVATE) |
+| **GitHub Repo** | https://github.com/abrar-de-ahmed/sp-rwp-crm (PUBLIC) |
+| **Railway** | Deployed — PostgreSQL + Next.js app |
+| **Master Doc** | /home/z/my-project/download/SP_RWP_CRM_DEPLOYMENT_MASTER.md |
 | **Cloudflare Account** | Craftedminds3@gmail.com (ID: a9183b9558532b0f2e8ef6e577ea8aa5) |
 | **Workspace** | /home/z/my-project/ |
 
@@ -57,7 +59,7 @@ The AI will:
 ## CURRENT STATUS
 
 ### What's Built (All Working)
-- **44 API routes** — auth, leads, users, follow-ups, calls, AI, webhooks, messaging, email, workflows
+- **51 API routes** — auth, leads, users, follow-ups, calls, AI, webhooks, messaging, email, workflows
 - **21 pages** — dashboard, leads, pipeline, follow-ups, calls, inbox, team, memberships, reports, AI, settings
 - **11 database tables** — User, Lead, Call, Conversation, FollowUp, Membership, AuditLog, Notification, AIInsight, ChannelConnection, AILearning
 - **6 AI agents** — lead scoring, customer bot, call monitor, follow-up agent, reporting, data quality
@@ -77,7 +79,7 @@ The AI will:
 | Phase 3A: Prove It Works | PENDING | Test with real SPR Meta/WhatsApp credentials |
 | Phase 3B: Build The Brain | PENDING | Populate CLIENT_CONTEXT with real data, train bot |
 | Phase 3C: Make AI Smart | PENDING | Conversion tracking, response optimization |
-| Phase 4: Production | PENDING | Cloudflare Pages, Neon PostgreSQL, domain, CI/CD |
+| Phase 4: Production | IN PROGRESS | Railway deployed (PostgreSQL + app), custom domain pending |
 
 ---
 
@@ -136,14 +138,19 @@ The AI will:
 
 1. **ALWAYS read CHAMP.md first** when activated with "Fire in the hole"
 2. **Then read ALL agents/** files — they contain the real knowledge
-3. **NEVER commit .env** — always use .env.example as template
-4. **PUSH to GitHub** after every completed task
-5. **The app uses SPA pattern** — new pages need registration in sidebar.tsx + crm-layout.tsx
-6. **User prefers zero-cost solutions** — avoid paid services unless explicitly approved
-7. **User timezone:** Asia/Karachi
-8. **Dev server:** port 3000
-9. **Database:** SQLite at db/custom.db
-10. **Runtime:** Bun (not npm/node)
+3. **Also read STATE.md and worklog.md** for current status and full history
+4. **Read Master Deployment Doc** at /home/z/my-project/download/SP_RWP_CRM_DEPLOYMENT_MASTER.md
+5. **NEVER commit .env** — always use .env.example as template
+6. **NEVER delete or overwrite existing .md files** — always APPEND new content
+7. **PUSH to branch first** → test → merge to main (safety protocol)
+8. **npm run build** must pass with 0 errors before any push
+9. **The app uses SPA pattern** — new pages need registration in sidebar.tsx + crm-layout.tsx
+10. **User prefers zero-cost solutions** — avoid paid services unless explicitly approved
+11. **User timezone:** Asia/Karachi
+12. **Dev server:** port 3000
+13. **Database:** SQLite locally (db/custom.db), PostgreSQL on Railway
+14. **Runtime:** npm/node locally, Node on Railway
+15. **Railway env vars:** NEXTAUTH_SECRET, NEXTAUTH_URL, DATABASE_URL (PostgreSQL)
 
 ---
 
@@ -159,6 +166,21 @@ The AI will:
 | #6 | Phase 3 verify — login fix, channel FK fix, WhatsApp UI fix, channels/test route |
 | #7 | Strategy — aligned on product vision, planned 7-file agent system |
 | #8 | **Agent files deployed** — all 7 agents created, CHAMP.md restructured, pushed to GitHub |
+| #9 | Full QA — 9 bugs fixed (manager password, hooks crash, alert→toast, leaderboard), STATE.md created |
+| #10 | **Railway deployed** — PostgreSQL, lead detail bug fixed, safety protocol, master doc (798 lines) |
+
+---
+
+## SAFETY PROTOCOL (MANDATORY — Established Session #10)
+
+1. `npm run build` must pass with 0 errors before ANY push
+2. Create a branch (e.g., `fix/xxx` or `feat/xxx`) — NEVER push directly to main
+3. Verify fix works → merge to main
+4. NEVER commit .env, .env.local, or any secrets
+5. NEVER delete or overwrite .md files — always APPEND
+6. ALWAYS update CHAMP.md, STATE.md, worklog.md at end of every session
+7. API keys go in Railway env vars ONLY — never in code
+8. For local dev: schema uses `sqlite`; for Railway: schema uses `postgresql`
 
 ---
 
